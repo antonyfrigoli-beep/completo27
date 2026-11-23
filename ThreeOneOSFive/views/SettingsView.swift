@@ -4,6 +4,11 @@ struct SettingsView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.appLanguage) private var language
     @EnvironmentObject private var appState: AppState
+    @EnvironmentObject private var licenseManager: LicenseManager
+    @State private var now = Date()
+    @State private var revealLicenseKey = false
+
+    private let timer = Timer.publish(every: 30, on: .main, in: .common).autoconnect()
 
     var body: some View {
         NavigationStack {
@@ -12,37 +17,42 @@ struct SettingsView: View {
 
                 ScrollView(showsIndicators: false) {
                     VStack(alignment: .leading, spacing: 14) {
-                        HStack(spacing: 12) {
-                            AppLogo(size: 48)
-                                .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).stroke(AppTheme.secondaryAccent.opacity(0.65), lineWidth: 1))
-                            VStack(alignment: .leading, spacing: 4) {
-                                Text("FILZA EXTERNAL BYPASS")
-                                    .font(.system(size: 18, weight: .black, design: .rounded))
-                                    .tracking(0.5)
-                                    .foregroundStyle(.white)
-                                Text("CENTRAL DE CONFIGURAÇÕES · v\(appVersion)")
-                                    .font(.system(size: 9, weight: .bold, design: .monospaced))
-                                    .tracking(0.7)
-                                    .foregroundStyle(AppTheme.cyberBlue)
-                            }
-                            Spacer(minLength: 0)
-                        }
-                        .padding(.vertical, 8)
-
-                        settingsCard("ESTE DISPOSITIVO", subtitle: "Estado de compatibilidade", icon: "iphone.gen3") {
+                        settingsCard("APARELHO E LICENÇA", subtitle: "Informações desta instalação", icon: "iphone.gen3") {
+                            settingRow("iPhone", value: AppInfo.displayMachineName)
                             settingRow(language.text("settings.ios_version"), value: "\(AppInfo.osVersion) (\(AppInfo.osBuild))")
+
                             HStack {
-                                Text(language.text("settings.current_version"))
+                                Text("Compatibilidade")
                                     .font(.system(size: 12, weight: .medium))
                                     .foregroundStyle(.white.opacity(0.72))
                                 Spacer()
-                                statusPill(language.text(appState.isSupported ? "settings.supported" : "settings.unsupported"), color: appState.isSupported ? AppTheme.rgbGreen : AppTheme.rgbRed)
+                                statusPill(appState.isSupported ? "Compatível" : "Não compatível", color: appState.isSupported ? AppTheme.rgbGreen : AppTheme.rgbRed)
                             }
-                            .padding(.top, 8)
+                            .padding(.vertical, 9)
+                            .overlay(alignment: .bottom) { Rectangle().fill(Color.white.opacity(0.08)).frame(height: 0.5) }
+
+                            HStack(spacing: 9) {
+                                Image(systemName: "clock")
+                                    .font(.system(size: 13, weight: .semibold))
+                                    .foregroundStyle(AppTheme.secondaryAccent)
+                                    .frame(width: 20)
+                                Text("Licença")
+                                    .font(.system(size: 12, weight: .medium))
+                                    .foregroundStyle(.white.opacity(0.66))
+                                Spacer(minLength: 8)
+                                Text(licenseRemainingText)
+                                    .font(.system(size: 11, weight: .bold, design: .monospaced))
+                                    .foregroundStyle(licenseRemainingColor)
+                                    .multilineTextAlignment(.trailing)
+                            }
+                            .padding(.vertical, 9)
+                            .overlay(alignment: .bottom) { Rectangle().fill(Color.white.opacity(0.08)).frame(height: 0.5) }
+
+                            settingRow("Keys em uso", value: "\(licenseManager.activeKeysCount.map(String.init) ?? "—")")
+                            licenseKeyRow
                         }
 
-                        settingsCard("VERSÕES VERIFICADAS", subtitle: language.text("settings.supported_versions_footer"), icon: "checkmark.shield.fill") {
-                            settingRow("App", value: appVersion)
+                        settingsCard("VERSÕES COMPATÍVEIS", subtitle: "Versões do iOS verificadas", icon: "checkmark.shield.fill") {
                             settingRow("iOS 16", value: ExploitSupportPolicy.verifiedIOS16Range)
                             settingRow("iOS 17", value: ExploitSupportPolicy.verifiedIOS17Range)
                             settingRow("iOS 18", value: ExploitSupportPolicy.verifiedIOS18Range)
@@ -60,8 +70,6 @@ struct SettingsView: View {
                             }
                             .padding(.top, 8)
                         }
-
-
                     }
                     .padding(.horizontal, 16)
                     .padding(.top, 14)
@@ -79,6 +87,76 @@ struct SettingsView: View {
         }
         .tint(AppTheme.accent)
         .preferredColorScheme(.dark)
+        .onReceive(timer) { now = $0 }
+        .task {
+            while !Task.isCancelled {
+                await licenseManager.refreshActiveCount()
+                try? await Task.sleep(nanoseconds: 15_000_000_000)
+            }
+        }
+    }
+
+    private var licenseRemainingText: String {
+        guard let expiration = licenseManager.expirationDate else { return "VITALÍCIA" }
+        let remaining = expiration.timeIntervalSince(now)
+        guard remaining > 0 else { return "EXPIRADO" }
+        let totalSeconds = Int(remaining)
+        let days = totalSeconds / 86_400
+        let hours = (totalSeconds % 86_400) / 3_600
+        let minutes = (totalSeconds % 3_600) / 60
+        let seconds = totalSeconds % 60
+        if days > 0 { return "\(days)d \(hours)h \(minutes)m \(seconds)s" }
+        if hours > 0 { return "\(hours)h \(minutes)m \(seconds)s" }
+        if minutes > 0 { return "\(minutes)m \(seconds)s" }
+        return "\(seconds)s"
+    }
+
+    private var licenseRemainingColor: Color {
+        guard let expiration = licenseManager.expirationDate else { return AppTheme.secondaryAccent }
+        let remaining = expiration.timeIntervalSince(now)
+        if remaining < 0 { return AppTheme.rgbRed }
+        if remaining < 86_400 { return AppTheme.cyberBlue }
+        if remaining < 7 * 86_400 { return AppTheme.rgbRed }
+        return AppTheme.rgbGreen
+    }
+
+    private var licenseKeyText: String {
+        guard let key = licenseManager.rememberedKey(), !key.isEmpty else { return "KEY NÃO DISPONÍVEL" }
+        guard !revealLicenseKey else { return key }
+        let hiddenCount = max(0, key.count - 4)
+        return String(repeating: "•", count: hiddenCount) + String(key.suffix(4))
+    }
+
+    private var licenseKeyRow: some View {
+        HStack(spacing: 10) {
+            Image(systemName: "key.fill")
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundStyle(AppTheme.secondaryAccent)
+                .frame(width: 20)
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Key")
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundStyle(.white.opacity(0.66))
+                Text(licenseKeyText)
+                    .font(.system(size: 11, weight: .bold, design: .monospaced))
+                    .foregroundStyle(.white.opacity(0.90))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.65)
+            }
+            Spacer(minLength: 4)
+            Button {
+                withAnimation(.easeInOut(duration: 0.18)) { revealLicenseKey.toggle() }
+            } label: {
+                Image(systemName: revealLicenseKey ? "eye.slash.fill" : "eye.fill")
+                    .font(.system(size: 14, weight: .regular))
+                    .foregroundStyle(.white.opacity(0.68))
+                    .frame(width: 36, height: 36)
+            }
+            .buttonStyle(.plain)
+            .disabled(licenseManager.rememberedKey() == nil)
+            .accessibilityLabel(revealLicenseKey ? "Ocultar key" : "Mostrar key")
+        }
+        .padding(.vertical, 8)
     }
 
     private func settingsCard<Content: View>(
@@ -142,12 +220,6 @@ struct SettingsView: View {
         .padding(.vertical, 7)
         .background(color.opacity(0.12), in: Capsule())
         .overlay(Capsule().stroke(color.opacity(0.40), lineWidth: 0.8))
-    }
-
-    private var appVersion: String {
-        Bundle.main.object(forInfoDictionaryKey: "AppReleaseDisplayVersion") as? String
-            ?? Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String
-            ?? "1.0"
     }
 
     private func versionLabel(_ version: (beta: Int, publicBeta: Int?, build: String)) -> String {

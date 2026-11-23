@@ -150,37 +150,46 @@ def main() -> int:
             and 'ForEach(GameTab.allCases' in view
             and not any(old in view for old in ('case ffNormal =', 'case ffMax =', 'case ap =', 'case textures =', 'case others =')),
             "dashboard renders only the five requested PatchHub categories")
-    require(('FILZA EXTERNAL BYPASS EXTERNAL' in view or 'FILZA EXTERNAL BYPASS' in view)
-            and 'TOMMY' not in view,
-            "dashboard uses Filza branding and contains no Tommy brand string")
+    require('isMenuExpanded.toggle()' in view
+            and 'line.3.horizontal' in view
+            and 'Text("CATEGORIAS")' in view
+            and 'selectedGameTab = tab' in view
+            and 'selectedMainPage = 1' in view
+            and 'TutorialsView()' in view
+            and 'showSettings = true' in view,
+            "expanding menu contains five categories, Tutorials and Settings")
+    require('Text("FILZA EXTERNAL BYPASS")' not in view
+            and 'TOMMY' not in view
+            and 'Patchs' in view,
+            "minimal patch dashboard has no brand header and retains the Patchs title")
     require('isBusy: onlineCatalog.isRefreshing' not in view and 'LazyVStack(spacing: 10)' in view,
             "background catalog refresh does not dim the whole options list; rows are lazy-rendered")
-    category_controls = between(view, "ForEach(GameTab.allCases, id: \\.self)", "let localItems = filteredLocalItems")
-    require("pendingPatchID = nil" not in category_controls,
-            "changing categories preserves an automatic patch selection")
-    require('Text("Patchs")' in view
-            and 'CATEGORIAS ONLINE' not in view
-            and 'CATEGORÍAS ONLINE' not in view,
-            "dashboard heading uses the requested Patchs wording, not Spanish")
+    require('modeSelectionButton' not in view
+            and '@AppStorage("filzaBypass.automaticPatchMode")' not in view
+            and 'Automático' not in view
+            and 'downloadOnly(remote)' not in view
+            and 'onlineCatalog.toggle(remote)' in view
+            and 'UserDefaults.standard.set(false, forKey: "filzaBypass.automaticPatchMode")' in view
+            and 'Ativação manual: toque em um patch para ativar ou desativar.' in view
+            and 'startGameLaunchTimer' not in view
+            and 'recoverExpiredTemporaryPatchIfNeeded' not in view,
+            "all patch activation and restoration is manual; old automatic mode/timers are disabled")
     tutorials = read("ThreeOneOSFive/TutorialsView.swift")
-    require('navigationButton(title: "Patchs"' in view
-            and 'navigationButton(title: "Tutoriais"' in view
-            and 'TutorialsView()' in view
-            and 'withAnimation(.easeInOut(duration: 0.22))' in view,
-            "dashboard restores the bottom Patches/Tutorials navigation without swipe gestures over draggable switches")
     require('title: "Erro em Outros"' in tutorials
             and 'title: "FFTH e FFMax"' in tutorials
             and 'title: "Opções AP"' in tutorials
             and 'VideoPlayer(player: player)' in tutorials,
             "Portuguese tutorial page provides the three original videos and full-screen player")
-    require('Text("v5.0.11 Secure")' in view,
-            "visible in-app version label matches the update release")
-    manual_guidance = "Entre no jogo até 40%, volte aqui e ative o patch escolhido e retorne ao jogo e espere chegar ao lobby, quando chegar ao lobby volte aqui e desative o patch escolhido e pode voltar ao jogo novamente!"
-    require(manual_guidance in view,
-            "manual mode shows the requested Portuguese 40%-to-lobby instructions")
-    automatic_guidance = "O modo automático faz tudo sozinho: selecione o patch e abra o jogo; ele ativa e desativa o patch no tempo certo. Se não funcionar no seu celular, escolha o modo Manual."
-    require(automatic_guidance in view,
-            "automatic mode explains self-activation and recommends Manual if unsupported")
+    settings = read("ThreeOneOSFive/views/SettingsView.swift")
+    require('AppLogo' not in settings
+            and 'FILZA EXTERNAL BYPASS' not in settings
+            and 'CENTRAL DE CONFIGURAÇÕES' not in settings
+            and 'AppInfo.displayMachineName' in settings
+            and 'licenseManager.expirationDate' in settings
+            and 'rememberedKey()' in settings
+            and 'ExploitSupportPolicy.verifiedIOS16Range' in settings
+            and 'ExploitSupportPolicy.verifiedIOS27Range' in settings,
+            "Settings groups device, license and key data with the supported iOS versions, without logo/branding")
     activation = read("ThreeOneOSFive/helpers/LicenseActivationView.swift")
     require('@ObservedObject var manager: LicenseManager' in activation
             and 'manager.activate(key: key)' in activation
@@ -228,10 +237,10 @@ def main() -> int:
             "entry and dashboard expose only the FF Normal game choice")
     info = plistlib.loads((APP / "Info.plist").read_bytes())
     require(info.get("CFBundleShortVersionString") == "5.0.11"
-            and info.get("CFBundleVersion") == "21",
+            and info.get("CFBundleVersion") == "22",
             "source Info.plist has the new version/build required to update the installed app")
     project_settings = read("ThreeOneOSFive.xcodeproj/project.pbxproj")
-    require(project_settings.count("CURRENT_PROJECT_VERSION = 21;") == 2
+    require(project_settings.count("CURRENT_PROJECT_VERSION = 22;") == 2
             and project_settings.count("MARKETING_VERSION = 5.0.11;") == 2,
             "both Xcode configurations generate the new version/build")
     require("TutorialsView.swift in Sources" in project_settings

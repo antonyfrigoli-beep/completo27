@@ -13,10 +13,11 @@ struct TutorialsView: View {
 
     var body: some View {
         ZStack {
-            ParticleFieldBackground()
             ScrollView(showsIndicators: false) {
                 VStack(alignment: .leading, spacing: 16) {
-                    header
+                    Text("Escolha um dos guias para assistir.")
+                        .font(.system(size: 12, weight: .medium, design: .rounded))
+                        .foregroundStyle(.white.opacity(0.62))
                     LazyVGrid(columns: [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)], spacing: 12) {
                         ForEach(tutorials) { tutorial in
                             TutorialCard(item: tutorial) { selectedTutorial = tutorial }
@@ -28,8 +29,8 @@ struct TutorialsView: View {
                         .frame(maxWidth: .infinity, alignment: .center)
                 }
                 .padding(.horizontal, 16)
-                .padding(.top, 24)
-                .padding(.bottom, 120)
+                .padding(.top, 14)
+                .padding(.bottom, 24)
             }
         }
         .fullScreenCover(item: $selectedTutorial) { tutorial in
@@ -38,20 +39,6 @@ struct TutorialsView: View {
         .preferredColorScheme(.dark)
     }
 
-    private var header: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Label("GUIA OFICIAL", systemImage: "play.rectangle.fill")
-                .font(.system(size: 10, weight: .semibold, design: .rounded))
-                .tracking(1.1)
-                .foregroundStyle(AppTheme.accent)
-            Text("Tutoriais")
-                .font(.system(size: 25, weight: .semibold, design: .rounded))
-                .foregroundStyle(.white)
-            Text("Escolha um dos três guias para assistir.")
-                .font(.system(size: 12, weight: .medium, design: .rounded))
-                .foregroundStyle(.white.opacity(0.62))
-        }
-    }
 }
 
 private struct TutorialItem: Identifiable {
