@@ -122,16 +122,13 @@ struct ParticleFieldBackground: View {
                     endPoint: .bottomTrailing
                 )
 
-                if reduceMotion {
+                TimelineView(.animation(minimumInterval: reduceMotion ? 1.0 / 10.0 : 1.0 / 30.0)) { timeline in
                     Canvas { context, size in
-                        Self.drawConstellation(in: &context, size: size, phase: 0)
-                    }
-                } else {
-                    TimelineView(.animation(minimumInterval: 1.0 / 30.0)) { timeline in
-                        Canvas { context, size in
-                            let phase = timeline.date.timeIntervalSinceReferenceDate * 1.35
-                            Self.drawConstellation(in: &context, size: size, phase: phase)
-                        }
+                        let phaseSpeed = reduceMotion ? 0.45 : 1.15
+                        let motionScale = reduceMotion ? 0.48 : 1.0
+                        let phase = (timeline.date.timeIntervalSinceReferenceDate * phaseSpeed)
+                            .truncatingRemainder(dividingBy: .pi * 2)
+                        Self.drawConstellation(in: &context, size: size, phase: phase, motionScale: motionScale)
                     }
                 }
             }
@@ -141,22 +138,22 @@ struct ParticleFieldBackground: View {
         .accessibilityHidden(true)
     }
 
-    private static func drawConstellation(in context: inout GraphicsContext, size: CGSize, phase: Double) {
+    private static func drawConstellation(in context: inout GraphicsContext, size: CGSize, phase: Double, motionScale: Double) {
         guard size.width > 0, size.height > 0 else { return }
         let count = 25
         let points: [CGPoint] = (0..<count).map { index in
             let seed = Double(index)
-            let baseX = (seed * 0.61803398875).truncatingRemainder(dividingBy: 1)
-            let baseY = (seed * 0.75487766625 + 0.17).truncatingRemainder(dividingBy: 1)
-            let driftX = sin(phase + seed * 1.73) * 0.075
-            let driftY = cos(phase * 0.83 + seed * 1.21) * 0.075
+            let baseX = 0.09 + (seed * 0.61803398875).truncatingRemainder(dividingBy: 1) * 0.82
+            let baseY = 0.09 + (seed * 0.75487766625 + 0.17).truncatingRemainder(dividingBy: 1) * 0.82
+            let driftX = sin(phase + seed * 1.73) * 0.09 * motionScale
+            let driftY = cos(phase * 0.83 + seed * 1.21) * 0.09 * motionScale
             return CGPoint(
                 x: CGFloat(min(1, max(0, baseX + driftX))) * size.width,
                 y: CGFloat(min(1, max(0, baseY + driftY))) * size.height
             )
         }
 
-        let maxDistance = min(size.width, size.height) * 0.27
+        let maxDistance = min(size.width, size.height) * 0.31
         for first in 0..<count {
             for second in (first + 1)..<count {
                 let a = points[first]
@@ -168,7 +165,7 @@ struct ParticleFieldBackground: View {
                 var path = Path()
                 path.move(to: a)
                 path.addLine(to: b)
-                let opacity = Double(0.11 * (1 - distance / maxDistance))
+                let opacity = Double(0.14 * (1 - distance / maxDistance))
                 context.stroke(
                     path,
                     with: .color(Color(red: 0.62, green: 0.64, blue: 0.66).opacity(opacity)),
@@ -178,7 +175,8 @@ struct ParticleFieldBackground: View {
         }
 
         for (index, point) in points.enumerated() {
-            let radius: CGFloat = index.isMultiple(of: 5) ? 2.1 : 1.25
+            let twinkle = 0.72 + 0.28 * (0.5 + 0.5 * sin(phase * 1.7 + Double(index) * 1.9))
+            let radius: CGFloat = index.isMultiple(of: 5) ? 2.2 : 1.4
             let dot = Path(
                 ellipseIn: CGRect(
                     x: point.x - radius,
@@ -191,7 +189,7 @@ struct ParticleFieldBackground: View {
                 dot,
                 with: .color(
                     Color(red: 0.72, green: 0.74, blue: 0.76)
-                        .opacity(index.isMultiple(of: 4) ? 0.42 : 0.20)
+                        .opacity((index.isMultiple(of: 4) ? 0.52 : 0.26) * twinkle)
                 )
             )
         }

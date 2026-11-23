@@ -158,7 +158,7 @@ jobs:
             echo "Nome de exibição Filza inesperado: $DISPLAY_NAME"
             exit 1
           fi
-          if [ "$SHORT_VERSION" != "5.0.11" ] || [ "$BUILD_NUMBER" != "20" ]; then
+          if [ "$SHORT_VERSION" != "5.0.11" ] || [ "$BUILD_NUMBER" != "21" ]; then
             echo "Versão/build não atualizados: $SHORT_VERSION ($BUILD_NUMBER)"
             exit 1
           fi

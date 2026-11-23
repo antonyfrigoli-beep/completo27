@@ -215,7 +215,7 @@ struct ContentView: View {
 
     private var dashboardPage: some View {
         ZStack {
-            AnimatedHyperBackdrop()
+            ParticleFieldBackground()
             ScrollViewReader { proxy in
                 ScrollView(showsIndicators: false) {
                     VStack(alignment: .leading, spacing: 0) {
@@ -281,7 +281,7 @@ struct ContentView: View {
                             .font(.system(size: 12, weight: .black, design: .rounded))
                             .foregroundStyle(.white)
                             .frame(maxWidth: .infinity, minHeight: 44)
-                            .background(LinearGradient(colors: [AppTheme.secondaryAccent, AppTheme.rgbRed], startPoint: .leading, endPoint: .trailing), in: RoundedRectangle(cornerRadius: 13, style: .continuous))
+                            .background(AppTheme.rgbGradient, in: RoundedRectangle(cornerRadius: 13, style: .continuous))
                     }
                     .buttonStyle(.plain)
                 }

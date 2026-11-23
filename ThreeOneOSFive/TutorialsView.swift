@@ -13,7 +13,7 @@ struct TutorialsView: View {
 
     var body: some View {
         ZStack {
-            AppTheme.pageBackground.ignoresSafeArea()
+            ParticleFieldBackground()
             ScrollView(showsIndicators: false) {
                 VStack(alignment: .leading, spacing: 16) {
                     header

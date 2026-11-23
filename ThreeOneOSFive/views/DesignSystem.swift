@@ -1,21 +1,20 @@
 import SwiftUI
 
 enum AppTheme {
-    // Filza: azul e vermelho vivos, porém com contraste mais confortável e menos neon.
-    static let accent = Color(red: 0.12, green: 0.34, blue: 0.88)
-    static let secondaryAccent = Color(red: 0.88, green: 0.08, blue: 0.12)
-    static let cyberBlue = Color(red: 0.22, green: 0.52, blue: 0.92)
+    // Superfícies neutras em grafite; os acentos de estado continuam reservados a feedback funcional.
+    static let accent = Color(red: 0.36, green: 0.43, blue: 0.54)
+    static let secondaryAccent = Color(red: 0.66, green: 0.68, blue: 0.72)
+    static let cyberBlue = Color(red: 0.48, green: 0.56, blue: 0.68)
     static let rgbRed = Color(red: 0.88, green: 0.08, blue: 0.12)
     // Mantido pelo nome legado; estados positivos usam azul, sem verde na UI.
     static let rgbGreen = Color(red: 0.30, green: 0.64, blue: 1.00)
-    static let pageBackground = Color(red: 0.008, green: 0.010, blue: 0.020)
-    static let consoleBackground = Color(red: 0.018, green: 0.026, blue: 0.055)
-    static let referenceCard = Color(red: 0.040, green: 0.055, blue: 0.105)
-    static let controlSurface = Color(red: 0.065, green: 0.090, blue: 0.155)
-    // Stops pretos separam azul e vermelho para evitar qualquer faixa roxa/rosa.
-    static let rgbGradient = LinearGradient(colors: [secondaryAccent, Color(red: 0.16, green: 0.20, blue: 0.34), accent], startPoint: .leading, endPoint: .trailing)
+    static let pageBackground = Color(red: 0.008, green: 0.009, blue: 0.011)
+    static let consoleBackground = Color(red: 0.020, green: 0.021, blue: 0.024)
+    static let referenceCard = Color(red: 0.040, green: 0.041, blue: 0.045)
+    static let controlSurface = Color(red: 0.068, green: 0.070, blue: 0.075)
+    static let rgbGradient = LinearGradient(colors: [Color(red: 0.18, green: 0.19, blue: 0.21), Color(red: 0.085, green: 0.088, blue: 0.095)], startPoint: .leading, endPoint: .trailing)
     static let panelGradient = LinearGradient(colors: [referenceCard, consoleBackground], startPoint: .topLeading, endPoint: .bottomTrailing)
-    static let signalEdge = LinearGradient(colors: [secondaryAccent.opacity(0.50), Color.white.opacity(0.08), accent.opacity(0.55)], startPoint: .leading, endPoint: .trailing)
+    static let signalEdge = LinearGradient(colors: [Color.white.opacity(0.16), Color.white.opacity(0.04), Color.white.opacity(0.12)], startPoint: .leading, endPoint: .trailing)
     static let pageInset: CGFloat = 16
     static let rowIconSize: CGFloat = 17
     static let rowIconFrame: CGFloat = 28

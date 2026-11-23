@@ -5,9 +5,9 @@ struct LockScreenView: View {
 
     var body: some View {
         ZStack {
-            AnimatedHyperBackdrop()
+            ParticleFieldBackground()
                 .ignoresSafeArea()
-            Color.black.opacity(0.55)
+            Color.black.opacity(0.10)
                 .ignoresSafeArea()
             VStack(spacing: 18) {
                 Image(systemName: "lock.fill")

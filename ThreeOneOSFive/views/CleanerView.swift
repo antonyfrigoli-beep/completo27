@@ -64,15 +64,17 @@ struct CleanerView: View {
 
     var body: some View {
         NavigationStack {
-            VStack(spacing: 0) {
-                AppSearchField(
-                    text: $searchText,
-                    prompt: language.text("cleaner.search"),
-                    clearLabel: language.text("common.clear")
-                )
-                Divider()
-                cleanerList
-                    .listStyle(.insetGrouped)
+            ZStack {
+                ParticleFieldBackground()
+                VStack(spacing: 0) {
+                    AppSearchField(
+                        text: $searchText,
+                        prompt: language.text("cleaner.search"),
+                        clearLabel: language.text("common.clear")
+                    )
+                    Divider()
+                    cleanerList
+                }
             }
             .navigationTitle(language.text("cleaner.title"))
             .navigationBarTitleDisplayMode(.inline)
@@ -91,11 +93,17 @@ struct CleanerView: View {
     private var cleanerList: some View {
         if records.isEmpty {
             List { emptySection }
+                .listStyle(.insetGrouped)
+                .scrollContentBackground(.hidden)
+                .listRowBackground(AppTheme.referenceCard)
         } else {
             List {
                 summarySection
                 applicationsSection
             }
+            .listStyle(.insetGrouped)
+            .scrollContentBackground(.hidden)
+            .listRowBackground(AppTheme.referenceCard)
         }
     }
 

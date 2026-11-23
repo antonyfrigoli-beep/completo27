@@ -228,10 +228,10 @@ def main() -> int:
             "entry and dashboard expose only the FF Normal game choice")
     info = plistlib.loads((APP / "Info.plist").read_bytes())
     require(info.get("CFBundleShortVersionString") == "5.0.11"
-            and info.get("CFBundleVersion") == "20",
+            and info.get("CFBundleVersion") == "21",
             "source Info.plist has the new version/build required to update the installed app")
     project_settings = read("ThreeOneOSFive.xcodeproj/project.pbxproj")
-    require(project_settings.count("CURRENT_PROJECT_VERSION = 20;") == 2
+    require(project_settings.count("CURRENT_PROJECT_VERSION = 21;") == 2
             and project_settings.count("MARKETING_VERSION = 5.0.11;") == 2,
             "both Xcode configurations generate the new version/build")
     require("TutorialsView.swift in Sources" in project_settings
