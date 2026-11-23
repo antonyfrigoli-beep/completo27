@@ -765,9 +765,6 @@ struct ContentView: View {
                 PremiumLaunchButton(title: "Free Fire", subtitle: "Normal", color: AppTheme.accent, assetName: "FreeFireNormal") {
                     openGame(scheme: "freefireth")
                 }
-                PremiumLaunchButton(title: "Free Fire", subtitle: "MAX", color: AppTheme.secondaryAccent, assetName: "FreeFireMax") {
-                    openGame(scheme: "freefiremax")
-                }
             }
             HStack(spacing: 10) {
                 Button { forceRestoreAll() } label: {

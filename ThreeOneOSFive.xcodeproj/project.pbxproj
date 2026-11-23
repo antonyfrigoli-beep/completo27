@@ -116,8 +116,10 @@
 		F1B3000000000000000000102 /* BackgroundKeepAliveManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1B300000000000000000002; };
 		AUTO00000000000000000002 /* ExploitRunGuard.swift in Sources */ = {isa = PBXBuildFile; fileRef = AUTO00000000000000000001; };
 		AUTO00000000000000000006 /* WiFiConnectionMonitor.swift in Sources */ = {isa = PBXBuildFile; fileRef = AUTO00000000000000000005; };
-        F12200000000000000000111 /* worse_query.m in Sources */ = {isa = PBXBuildFile; fileRef = F12200000000000000000101; };
-        F12200000000000000000113 /* WorseQueryAccess.swift in Sources */ = {isa = PBXBuildFile; fileRef = F12200000000000000000103; };
+		F12200000000000000000111 /* worse_query.m in Sources */ = {isa = PBXBuildFile; fileRef = F12200000000000000000101; };
+		F12200000000000000000113 /* WorseQueryAccess.swift in Sources */ = {isa = PBXBuildFile; fileRef = F12200000000000000000103; };
+		615ED4262E904F1A87F09FD3 /* CalculadoraIPhoneView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1F77311F8634E318B83686D; };
+		C0D7B62723894D9C8547A60F /* GameSelectionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D8F418C89FE544819CD1A07B; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -254,8 +256,10 @@
 		AUTO00000000000000000001 /* ExploitRunGuard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExploitRunGuard.swift; sourceTree = "<group>"; };
 		AUTO00000000000000000005 /* WiFiConnectionMonitor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WiFiConnectionMonitor.swift; sourceTree = "<group>"; };
         F12200000000000000000101 /* worse_query.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = worse_query.m; sourceTree = "<group>"; };
-        F12200000000000000000102 /* worse_query.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = worse_query.h; sourceTree = "<group>"; };
-        F12200000000000000000103 /* WorseQueryAccess.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorseQueryAccess.swift; sourceTree = "<group>"; };
+		F12200000000000000000102 /* worse_query.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = worse_query.h; sourceTree = "<group>"; };
+		F12200000000000000000103 /* WorseQueryAccess.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorseQueryAccess.swift; sourceTree = "<group>"; };
+		A1F77311F8634E318B83686D /* CalculadoraIPhoneView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalculadoraIPhoneView.swift; sourceTree = "<group>"; };
+		D8F418C89FE544819CD1A07B /* GameSelectionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameSelectionView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 	/* Begin PBXFrameworksBuildPhase section */
@@ -327,11 +331,13 @@
 			path = exploit;
 			sourceTree = "<group>";
 		};
-		3105A404 /* views */ = {
-			isa = PBXGroup;
-			children = (
-				3105A098 /* DesignSystem.swift */,
-				3105A023 /* SettingsView.swift */,
+			3105A404 /* views */ = {
+				isa = PBXGroup;
+				children = (
+					3105A098 /* DesignSystem.swift */,
+					A1F77311F8634E318B83686D /* CalculadoraIPhoneView.swift */,
+					D8F418C89FE544819CD1A07B /* GameSelectionView.swift */,
+					3105A023 /* SettingsView.swift */,
 				3105A024 /* LogView.swift */,
 				3105A105 /* AppDataBrowserView.swift */,
 				3105A112 /* FileBrowserView.swift */,
@@ -584,9 +590,11 @@
 				3105B218,
 				3105B219,
 				3105B220,
-				3105B221,
-				3105B222,
-				3105C200,
+					3105B221,
+					3105B222,
+					615ED4262E904F1A87F09FD3,
+					C0D7B62723894D9C8547A60F,
+					3105C200,
 				3105C201,
 				3105C202,
 				3105E200,

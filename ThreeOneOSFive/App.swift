@@ -9,6 +9,9 @@ struct ThreeOneOSFiveApp: App {
     @StateObject private var fileOperationCoordinator = FileOperationCoordinator();
     @AppStorage(AppLanguage.storageKey) private var languageCode = AppLanguage.english.rawValue
     @State private var updateOffer: AppUpdateChecker.Offer?
+    @State private var calculatorUnlocked = false
+    @State private var hasAuthenticated = false
+    @State private var hasSelectedGame = false
     @State private var securityBlocked: Bool
     @Environment(\.scenePhase) private var scenePhase
 
@@ -40,14 +43,31 @@ struct ThreeOneOSFiveApp: App {
             Group {
                 if securityBlocked {
                     SecurityBlockedView()
-                } else if licenseManager.isActive && !licenseManager.isLocked {
-                    ContentView()
-                        .environmentObject(licenseManager)
                 } else if licenseManager.isLocked {
                     LockScreenView(manager: licenseManager)
                         .environmentObject(licenseManager)
+                } else if !calculatorUnlocked {
+                    CalculadoraIPhoneView {
+                        withAnimation(.easeInOut(duration: 0.22)) {
+                            calculatorUnlocked = true
+                        }
+                    }
+                } else if !hasAuthenticated || !licenseManager.isActive {
+                    LicenseActivationView(manager: licenseManager) {
+                        withAnimation(.easeInOut(duration: 0.22)) {
+                            hasAuthenticated = true
+                            hasSelectedGame = false
+                        }
+                    }
+                } else if !hasSelectedGame {
+                    GameSelectionView {
+                        withAnimation(.easeInOut(duration: 0.22)) {
+                            hasSelectedGame = true
+                        }
+                    }
                 } else {
-                    LicenseActivationView(manager: licenseManager)
+                    ContentView()
+                        .environmentObject(licenseManager)
                 }
                 }
                 .environmentObject(appState)
@@ -82,6 +102,12 @@ struct ThreeOneOSFiveApp: App {
                 licenseManager.beginLaunchSession()
                 appState.detectSupport()
                 checkForUpdate()
+            }
+            .onChange(of: licenseManager.isActive) { isActive in
+                if !isActive {
+                    hasAuthenticated = false
+                    hasSelectedGame = false
+                }
             }
             .onChange(of: scenePhase) { phase in
                 if phase == .background {
