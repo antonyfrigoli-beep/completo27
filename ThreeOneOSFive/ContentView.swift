@@ -1450,8 +1450,7 @@ struct ContentView: View {
         }
         log("timer: bg task id=\(backgroundTaskID.rawValue)")
 
-        let isPersistent = pendingCategory
-            .flatMap { PatchCatalog.Category(rawValue: $0) }
+        let isPersistent = PatchCatalog.Category(rawValue: pendingCategory)
             .map { isPersistentCategory($0) } ?? false
         let applyMark: Double = 11.80
         let restoreMark: Double = 16.80
