@@ -13,34 +13,17 @@ struct FilzaValidationResult {
 }
 
 /// Validates login keys through the publicCheckKey tRPC endpoint.
-/// The other Filza backend routes (catalog, remote lock and announcements)
-/// continue to use `baseURL`.
+/// The PatchHub feed is public; unrelated Filza backend routes still use `baseURL`.
 enum FilzaLicense {
     static let keyValidationEndpoint = URL(string: "https://proxysystem.org/api/trpc/proxyKeys.publicCheckKey")!
     static let baseURL   = "https://martins-license.duckdns.org/external"
+    static let patchHubBaseURL = URL(string: "https://painel.proxysystem.org")!
     static let timeout: TimeInterval = 15
-
-    private static let keychainService = "com.apple.mobile.MobileHouseArrest.activation"
-    private static let keychainAccount = "license-key"
 
     private static func log(_ message: String) {
         #if DEBUG
         NSLog("[FilzaLicense] %@", message)
         #endif
-    }
-
-    private static func storedKey() -> String? {
-        let query: [String: Any] = [
-            kSecClass as String: kSecClassGenericPassword,
-            kSecAttrService as String: keychainService,
-            kSecAttrAccount as String: keychainAccount,
-            kSecReturnData as String: true,
-            kSecMatchLimit as String: kSecMatchLimitOne
-        ]
-        var result: CFTypeRef?
-        guard SecItemCopyMatching(query as CFDictionary, &result) == errSecSuccess,
-              let data = result as? Data else { return nil }
-        return String(data: data, encoding: .utf8)
     }
 
     // MARK: - Device HWID (anti-crack binding)
@@ -221,6 +204,7 @@ enum FilzaLicense {
         let url: String
         let file: String
         let cat: String?
+        let password: String?
         let extra: Bool?
         let rank: Int?
 
@@ -247,49 +231,68 @@ enum FilzaLicense {
         let items: [CatalogItem]
     }
 
-    static func fetchCatalog() async -> (catalog: Catalog?, failureMessage: String?) {
-        guard let stored = storedKey() else {
-            return (nil, "Nenhuma chave salva neste dispositivo.")
+    private static func patchHubResolvedURL(_ rawURL: String?, baseURL: URL) -> String? {
+        guard let rawURL = rawURL?.trimmingCharacters(in: .whitespacesAndNewlines),
+              !rawURL.isEmpty,
+              let resolved = URL(string: rawURL, relativeTo: baseURL)?.absoluteURL,
+              resolved.scheme?.lowercased() == "https",
+              resolved.host?.lowercased() == baseURL.host?.lowercased() else {
+            return nil
         }
-        let key = stored.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !key.isEmpty else { return (nil, "Nenhuma chave salva neste dispositivo.") }
+        return resolved.absoluteString
+    }
+
+    static func fetchCatalog() async -> (catalog: Catalog?, failureMessage: String?) {
         do {
-            var req = URLRequest(url: URL(string: baseURL + "/v1/catalog")!)
+            let catalogURL = patchHubBaseURL
+                .appendingPathComponent("api")
+                .appendingPathComponent("mobile")
+                .appendingPathComponent("catalog")
+            var req = URLRequest(url: catalogURL)
             req.timeoutInterval = 30
             req.setValue("application/json", forHTTPHeaderField: "Accept")
-            req.setValue(key, forHTTPHeaderField: "X-Filza-Key")
-            req.setValue(deviceHWID(), forHTTPHeaderField: "X-Filza-Device")
             let (data, response) = try await URLSession.shared.data(for: req)
             guard let http = response as? HTTPURLResponse else {
-                return (nil, "Resposta inválida do servidor do catálogo.")
+                return (nil, "Resposta inválida do servidor PatchHub.")
+            }
+            guard http.url?.scheme?.lowercased() == "https",
+                  http.url?.host?.lowercased() == patchHubBaseURL.host?.lowercased() else {
+                return (nil, "O feed PatchHub respondeu por um endereço HTTPS inesperado.")
             }
             guard (200..<300).contains(http.statusCode) else {
                 let message: String
                 switch http.statusCode {
                 case 401, 403:
-                    message = "O catálogo Filza recusou esta chave (HTTP \(http.statusCode)). Peça ao revendedor para confirmar se ela está ativa no servidor do catálogo."
+                    message = "O PatchHub recusou a solicitação (HTTP \(http.statusCode))."
                 case 429:
-                    message = "O catálogo Filza está temporariamente ocupado. Tente novamente em instantes."
+                    message = "O PatchHub está temporariamente ocupado. Tente novamente em instantes."
                 default:
-                    message = "O servidor do catálogo respondeu HTTP \(http.statusCode). Tente novamente mais tarde."
+                    message = "O PatchHub respondeu HTTP \(http.statusCode). Tente novamente mais tarde."
                 }
                 log("catalog request rejected with HTTP \(http.statusCode)")
                 return (nil, message)
             }
             guard let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-                  let arr = obj["items"] as? [[String: Any]] else {
-                return (nil, "O servidor enviou uma lista de opções inválida.")
+                  let arr = obj["patches"] as? [[String: Any]] else {
+                return (nil, "O PatchHub enviou uma lista de patches inválida.")
             }
             let items = arr.compactMap { o -> CatalogItem? in
-                guard let id = o["id"] as? String,
-                      let url = o["url"] as? String else { return nil }
+                guard (o["maintenance"] as? Bool) != true,
+                      let id = o["id"] as? String,
+                      let feature = o["feature"] as? String,
+                      let category = PatchCatalog.Category(remoteFeature: feature),
+                      let packageURL = patchHubResolvedURL(o["packageURL"] as? String, baseURL: patchHubBaseURL),
+                      let file = o["packageFilename"] as? String,
+                      !file.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return nil }
+                let iconURL = patchHubResolvedURL(o["iconURL"] as? String, baseURL: patchHubBaseURL)
                 return CatalogItem(
                     id: id,
                     name: o["name"] as? String ?? id,
-                    img: o["img"] as? String,
-                    url: url,
-                    file: o["file"] as? String ?? "",
-                    cat: o["cat"] as? String,
+                    img: iconURL,
+                    url: packageURL,
+                    file: file,
+                    cat: category.rawValue,
+                    password: o["password"] as? String,
                     extra: o["extra"] as? Bool,
                     rank: o["rank"] as? Int
                 )
@@ -297,30 +300,17 @@ enum FilzaLicense {
             return (Catalog(items: items), nil)
         } catch {
             log("catalog request failed: \(error.localizedDescription)")
-            return (nil, "Não foi possível conectar ao servidor do catálogo. Verifique sua internet.")
+            return (nil, "Não foi possível conectar ao PatchHub. Verifique a conexão e tente novamente.")
         }
     }
 
-    private static func openTransport(_ data: Data, key: String, itemID: String, filename: String) throws -> Data {
-        let magic = Data("FPT1".utf8)
-        guard data.starts(with: magic) else { return data } // compatibility with old servers during rollout
-        guard data.count > magic.count + 12 else { throw PatchPackageError.remoteImportFailed }
-        let transportKey = Data(SHA256.hash(data: Data("filza-transport-v1:\(key):\(itemID)".utf8)))
-        let nonce = data.subdata(in: magic.count..<(magic.count + 12))
-        let ciphertext = data.subdata(in: (magic.count + 12)..<data.count)
-        let box = try AES.GCM.SealedBox(nonce: try AES.GCM.Nonce(data: nonce), ciphertext: ciphertext.dropLast(16), tag: ciphertext.suffix(16))
-        return try AES.GCM.open(box, using: SymmetricKey(data: transportKey), authenticating: Data("\(itemID):\(filename)".utf8))
-    }
-
-    /// Download a single catalog item into the authenticated online patch library.
+    /// Download and validate one package from the public PatchHub feed.
     @discardableResult
     static func downloadItem(_ item: CatalogItem) async -> URL? {
-        guard let url = URL(string: item.url), let stored = storedKey() else { return nil }
-        let key = stored.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !key.isEmpty else { return nil }
+        guard let url = URL(string: item.url),
+              url.scheme?.lowercased() == "https",
+              url.host?.lowercased() == patchHubBaseURL.host?.lowercased() else { return nil }
         guard let destDir = try? PatchProjectLibrary.packageRootURL() else { return nil }
-        let requestedName = item.file.isEmpty ? url.lastPathComponent : item.file
-        let normalizedName = URL(fileURLWithPath: requestedName).lastPathComponent
         let filename = item.localFilename
         let dest = destDir.appendingPathComponent(filename)
         var stage = "download request"
@@ -331,31 +321,28 @@ enum FilzaLicense {
             let session = URLSession(configuration: config)
             defer { session.invalidateAndCancel() }
             var request = URLRequest(url: url)
-            request.setValue(key, forHTTPHeaderField: "X-Filza-Key")
-            request.setValue(deviceHWID(), forHTTPHeaderField: "X-Filza-Device")
-            request.setValue("1", forHTTPHeaderField: "X-Filza-Transport")
+            request.setValue("application/octet-stream", forHTTPHeaderField: "Accept")
             let (tmp, response) = try await session.download(for: request)
             stage = "HTTP response validation"
             guard let http = response as? HTTPURLResponse,
+                  http.url?.scheme?.lowercased() == "https",
+                  http.url?.host?.lowercased() == patchHubBaseURL.host?.lowercased(),
                   (200..<300).contains(http.statusCode) else { return nil }
-            stage = "transport authentication"
-            let raw = try Data(contentsOf: tmp, options: .mappedIfSafe)
-            let data: Data
-            do {
-                // The server authenticates the exact filename stored in its
-                // catalog. Try that unchanged value first; use the basename
-                // only for older catalogs that included a path prefix.
-                data = try openTransport(raw, key: key, itemID: item.id, filename: requestedName)
-            } catch {
-                guard normalizedName != requestedName else { throw error }
-                data = try openTransport(raw, key: key, itemID: item.id, filename: normalizedName)
-            }
+            let data = try Data(contentsOf: tmp, options: .mappedIfSafe)
             stage = "package validation"
-            _ = try PatchPackageCodec.inspect(data)
+            let summary = try PatchPackageCodec.inspect(data)
+            if summary.isPasswordProtected,
+               let password = item.password?.trimmingCharacters(in: .whitespacesAndNewlines),
+               !password.isEmpty {
+                do {
+                    let decoded = try PatchPackageCodec.decode(data, password: password)
+                    try PatchKeyStore.store(decoded.contentKey, for: summary)
+                } catch {
+                    // Keep a protected package available for the existing manual unlock prompt.
+                    log("catalog password did not unlock item \(item.id); package remains locked")
+                }
+            }
             stage = "protected cache write"
-            // `tmp` still contains the FPT1 transport envelope. Publish the
-            // already-decrypted package data through the at-rest cache writer;
-            // moving `tmp` here would make every package fail its final check.
             _ = try PatchProjectLibrary.save(
                 data: data,
                 projectName: filename,

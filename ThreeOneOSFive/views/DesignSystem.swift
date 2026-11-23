@@ -474,6 +474,11 @@ struct PremiumPatchCard: View {
         switch target.uppercased() {
         case "FF NORMAL": return isSpanish ? "FREE FIRE · NORMAL" : "FREE FIRE · NORMAL"
         case "FF MAX": return "FREE FIRE · MAX"
+        case "CACHE": return isSpanish ? "CACHÉ" : "CACHÊ"
+        case "AVATAR": return "AVATAR"
+        case "SKIN": return "SKIN"
+        case "EXTERNAL": return "EXTERNAL"
+        case "HOLOGRAM", "HOLOGRAMA": return "HOLOGRAMA"
         default: return target.uppercased()
         }
     }

@@ -3,7 +3,7 @@ import UIKit
 
 
 
-/// Manages the FF NORMAL/MAX patch timer cycle.
+/// Manages timed patch application for PatchHub feature categories.
 /// Uses a class (reference semantics) so closures always see current state.
 final class PatchTimerCoordinator: ObservableObject {
     @Published var isActive = false
@@ -103,7 +103,7 @@ struct ContentView: View {
     @State private var patchMessage = "READY — SELECT A PATCH"
     @State private var activationFailureDetails = ""
     @State private var showActivationFailureAlert = false
-    @State private var selectedGameTab: GameTab = .ffNormal
+    @State private var selectedGameTab: GameTab = .cache
     @State private var activePatchID: UUID?
     @State private var pendingPatchID: UUID?
     @State private var pendingPatchName: String?
@@ -117,54 +117,49 @@ struct ContentView: View {
     @State private var selectedMainPage = 0
 
     enum GameTab: String, CaseIterable {
-        case ffNormal = "FF NORMAL"
-        case ffMax = "FF MAX"
-        case ap = "AP"
-        case textures = "TEXTURAS"
-        case holograms = "HOLOGRAMAS"
-        case others = "OUTROS"
+        case cache = "CACHE"
+        case avatar = "AVATAR"
+        case skin = "SKIN"
+        case external = "EXTERNAL"
+        case hologram = "HOLOGRAM"
 
         var category: PatchCatalog.Category {
             switch self {
-            case .ffNormal: return .ffNormal
-            case .ffMax: return .ffMax
-            case .ap: return .ap
-            case .textures: return .textures
-            case .holograms: return .holograms
-            case .others: return .others
+            case .cache: return .cache
+            case .avatar: return .avatar
+            case .skin: return .skin
+            case .external: return .external
+            case .hologram: return .hologram
             }
         }
 
         var icon: String {
             switch self {
-            case .ffNormal: return "flame.fill"
-            case .ffMax: return "flame.circle.fill"
-            case .ap: return "shield.lefthalf.filled"
-            case .textures: return "square.grid.2x2.fill"
-            case .holograms: return "wand.and.stars"
-            case .others: return "shippingbox.fill"
+            case .cache: return "internaldrive.fill"
+            case .avatar: return "person.crop.circle.fill"
+            case .skin: return "tshirt.fill"
+            case .external: return "square.and.arrow.up"
+            case .hologram: return "wand.and.stars"
             }
         }
 
         var displayTitle: String {
             switch self {
-            case .ffNormal: return "FF Normal"
-            case .ffMax: return "FF Max"
-            case .ap: return "AP"
-            case .textures: return "Texturas"
-            case .holograms: return "Hologramas"
-            case .others: return "Outros"
+            case .cache: return "Cachê"
+            case .avatar: return "Avatar"
+            case .skin: return "Skin"
+            case .external: return "External"
+            case .hologram: return "Holograma"
             }
         }
 
         var gradientColors: [Color] {
             switch self {
-            case .ffNormal: return [AppTheme.accent, Color(red: 0.30, green: 0.00, blue: 0.00)]
-            case .ffMax: return [AppTheme.secondaryAccent, Color(red: 0.42, green: 0.00, blue: 0.00)]
-            case .ap: return [AppTheme.cyberBlue, Color(red: 0.03, green: 0.04, blue: 0.14)]
-            case .textures: return [AppTheme.accent, Color(red: 0.55, green: 0.00, blue: 0.00)]
-            case .holograms: return [Color(red: 1.00, green: 0.02, blue: 0.04), Color(red: 0.34, green: 0.00, blue: 0.01)]
-            case .others: return [Color(red: 0.62, green: 0.00, blue: 0.00), Color(red: 0.08, green: 0.00, blue: 0.00)]
+            case .cache: return [AppTheme.accent, Color(red: 0.30, green: 0.00, blue: 0.00)]
+            case .avatar: return [AppTheme.secondaryAccent, Color(red: 0.42, green: 0.00, blue: 0.00)]
+            case .skin: return [AppTheme.cyberBlue, Color(red: 0.03, green: 0.04, blue: 0.14)]
+            case .external: return [AppTheme.accent, Color(red: 0.55, green: 0.00, blue: 0.00)]
+            case .hologram: return [Color(red: 1.00, green: 0.02, blue: 0.04), Color(red: 0.34, green: 0.00, blue: 0.01)]
             }
         }
     }
@@ -177,9 +172,7 @@ struct ContentView: View {
 
     private var remotePlaceholderItems: [FilzaLicense.CatalogItem] {
         onlineCatalog.items.filter { remote in
-            let category = (remote.cat ?? "").trimmingCharacters(in: .whitespacesAndNewlines).uppercased()
-            let aliases = ["HOLOGRAMA": "HOLOGRAMAS", "TEXTURA": "TEXTURAS", "OUTRO": "OUTROS", "PATCH": "OUTROS", "PATCHS": "OUTROS"]
-            guard (aliases[category] ?? category) == selectedGameTab.rawValue else { return false }
+            guard PatchCatalog.Category(remoteFeature: remote.cat) == selectedGameTab.category else { return false }
             return !patchStore.items.contains { $0.packageURL.lastPathComponent == remote.localFilename }
         }
     }
@@ -190,17 +183,7 @@ struct ContentView: View {
         if let remote = onlineCatalog.items.first(where: {
             $0.localFilename == filename
         }) {
-            let category = (remote.cat ?? "")
-                .trimmingCharacters(in: .whitespacesAndNewlines)
-                .uppercased()
-            let aliases: [String: String] = [
-                "HOLOGRAMA": "HOLOGRAMAS",
-                "TEXTURA": "TEXTURAS",
-                "OUTRO": "OUTROS",
-                "PATCH": "OUTROS",
-                "PATCHS": "OUTROS"
-            ]
-            return (aliases[category] ?? category) == selectedGameTab.rawValue
+            return PatchCatalog.Category(remoteFeature: remote.cat) == selectedGameTab.category
         }
 
         if let directEntry = PatchCatalog.entry(forBundledFile: filename) {
@@ -703,7 +686,7 @@ struct ContentView: View {
                             previewURL: remote.img
                         ) {
                             let remoteCategory = selectedGameTab.category
-                            if (automaticPatchMode || remoteCategory == .ap) && !isPersistentCategory(remoteCategory) {
+                            if automaticPatchMode && !isPersistentCategory(remoteCategory) {
                                 onlineCatalog.downloadOnly(remote) { message, downloadedID in
                                     patchMessage = message
                                     patchStore.reload()
@@ -924,24 +907,16 @@ struct ContentView: View {
         let filename = item.packageURL.lastPathComponent
         if let remote = onlineCatalog.items.first(where: {
             $0.localFilename == filename
-        }), let rawCategory = remote.cat?.trimmingCharacters(in: .whitespacesAndNewlines).uppercased() {
-            let aliases: [String: String] = [
-                "HOLOGRAMA": "HOLOGRAMAS",
-                "TEXTURA": "TEXTURAS",
-                "OUTRO": "OUTROS",
-                "PATCH": "OUTROS",
-                "PATCHS": "OUTROS"
-            ]
-            return PatchCatalog.Category(rawValue: aliases[rawCategory] ?? rawCategory)
+        }) {
+            return PatchCatalog.Category(remoteFeature: remote.cat)
         }
         return PatchCatalog.entry(forBundledFile: filename)?.category
     }
 
     private func isPersistentCategory(_ category: PatchCatalog.Category) -> Bool {
+        // PatchHub features use the existing timed auto-apply/restore flow.
         switch category {
-        case .textures, .holograms, .others:
-            return true
-        default:
+        case .cache, .avatar, .skin, .external, .hologram:
             return false
         }
     }
@@ -1039,7 +1014,7 @@ struct ContentView: View {
         DevicePatchService.operationQueue.async {
             do {
                 if WorseQueryAccess.isRequired {
-                    let bundleID = selectedGameTab == .ffMax ? "com.dts.freefiremax" : "com.dts.freefireth"
+                    let bundleID = "com.dts.freefireth"
                     try DevicePatchService.verifyDirectFileAccess(bundleID: bundleID)
                     DispatchQueue.main.async {
                         self.fileAccessMessage = "OK — COM ACESSO AOS ARQUIVOS"
@@ -1053,13 +1028,7 @@ struct ContentView: View {
                         throw AirLiftTransportError.tunnelUnavailable
                     }
                 }
-                let target: (String, String)
-                switch selectedGameTab {
-                case .ffMax:
-                    target = ("com.dts.freefiremax", "Documents/contentcache/Compulsory/ios/gameassetbundles/avatar/assetindexer.YJ~2FW7EkU5pRkVg51NrKyx4LXid8~3D")
-                default:
-                    target = ("com.dts.freefireth", "Documents/contentcache/Compulsory/ios/gameassetbundles/avatar/assetindexer.U6Zffc4YIR3DslNj3cXvYGAqz58~3D")
-                }
+                let target = ("com.dts.freefireth", "Documents/contentcache/Compulsory/ios/gameassetbundles/avatar/assetindexer.U6Zffc4YIR3DslNj3cXvYGAqz58~3D")
                 try AirTrafficPatchTransaction.verifyFileAccess(bundleID: target.0, relativePath: target.1)
                 DispatchQueue.main.async { self.fileAccessMessage = "OK — COM ACESSO AOS ARQUIVOS"; self.fileAccessChecking = false }
             } catch {
@@ -1173,7 +1142,7 @@ struct ContentView: View {
         }
     }
 
-    /// FF/AP only: persistent categories are left intact by the manual FF button.
+    /// Restores the selected feature-category patches through the manual FF button.
     private func forceRestoreFFOnly() {
         let ffIDs = Set(patchStore.items.compactMap { item -> UUID? in
             guard let itemCategory = category(for: item), !isPersistentCategory(itemCategory) else { return nil }
@@ -1194,17 +1163,11 @@ struct ContentView: View {
     }
 
     private var forceOriginalButtonTitle: String {
-        switch selectedGameTab {
-        case .ffMax: return "FORZAR ARCHIVO EN FF MAX"
-        default: return "FORZAR ARCHIVO EN FREE FIRE"
-        }
+        "FORÇAR ARQUIVO NO FREE FIRE"
     }
 
     private var isFreeFireGameTab: Bool {
-        switch selectedGameTab {
-        case .ffNormal, .ffMax: return true
-        default: return false
-        }
+        true
     }
 
     private func forceOriginalFileInSelectedGame() {
@@ -1212,16 +1175,8 @@ struct ContentView: View {
             patchMessage = "AGUARDE A OPERAÇÃO ATUAL TERMINAR"
             return
         }
-        let bundleID: String
-        let gameName: String
-        switch selectedGameTab {
-        case .ffMax:
-            bundleID = "com.dts.freefiremax"
-            gameName = "FF MAX"
-        default:
-            bundleID = "com.dts.freefireth"
-            gameName = "FREE FIRE"
-        }
+        let bundleID = "com.dts.freefireth"
+        let gameName = "FREE FIRE"
         patchOperationBusy = true
         pairingRecoveryBusy = true
         patchMessage = "FORZANDO ARCHIVO EN \(gameName)..."
@@ -1278,9 +1233,9 @@ struct ContentView: View {
             return
         }
 
-        // Em modo automático, FF Normal/Max ficam pendentes até abrir o jogo;
-        // categorias persistentes continuam aplicando no toque.
-        if !wasApplied && (automaticPatchMode || selectedCategory == .ap) && !isPersistentCategory(selectedCategory) {
+        // Em modo automático, as features PatchHub aguardam a abertura do jogo;
+        // no modo manual, o patch é aplicado no toque.
+        if !wasApplied && automaticPatchMode && !isPersistentCategory(selectedCategory) {
             pendingPatchID = item.uniqueID
             pendingPatchName = item.displayName
             pendingPatchCategory = selectedCategory.rawValue
@@ -1495,10 +1450,11 @@ struct ContentView: View {
         }
         log("timer: bg task id=\(backgroundTaskID.rawValue)")
 
-        let isAP = (pendingCategory == "AP")
-        let isPersistent = ["TEXTURAS", "HOLOGRAMAS", "OUTROS"].contains(pendingCategory)
-        let applyMark: Double = isAP ? 0.0 : 11.80     // aplica no segundo programado
-        let restoreMark: Double = isAP ? 5.0 : 16.80   // FF: restaura em 16.80s
+        let isPersistent = pendingCategory
+            .flatMap { PatchCatalog.Category(rawValue: $0) }
+            .map { isPersistentCategory($0) } ?? false
+        let applyMark: Double = 11.80
+        let restoreMark: Double = 16.80
 
         if !isPersistent {
             UserDefaults.standard.set(pendingID.uuidString, forKey: "temporaryPatchID")
@@ -1534,7 +1490,7 @@ struct ContentView: View {
             DispatchQueue.main.async { [self] in
                             }
 
-            // === APPLY at 7.5s ===
+            // Apply at the scheduled mark.
             if elapsed >= applyMark && !self.hasApplied {
                 self.hasApplied = true
                 log("timer: APPLY at \(String(format: "%.1f", elapsed))s")
@@ -1590,7 +1546,7 @@ struct ContentView: View {
                 }
             }
 
-            // Only the three new categories remain active; legacy FF/AP behavior is unchanged.
+            // All PatchHub feature categories use the same timed restore behavior.
             if !isPersistent && self.autoApplySucceeded && elapsed >= restoreMark && !self.hasRestored {
                 self.hasRestored = true
                 log("timer: RESTORE at \(String(format: "%.1f", elapsed))s")
@@ -1711,7 +1667,7 @@ struct ContentView: View {
             let selectedCategory = pendingPatchCategory
             log("openGame: opening \(scheme) mode=\(automaticPatchMode ? "automatic" : "manual") pendingID=\(String(describing: selectedID))")
 
-            if (automaticPatchMode || selectedCategory == "AP"), let selectedID, let selectedName, let selectedCategory {
+            if automaticPatchMode, let selectedID, let selectedName, let selectedCategory {
                 startGameLaunchTimer(pendingID: selectedID, pendingName: selectedName, pendingCategory: selectedCategory)
             } else {
                 log("openGame: no confirmed patch selection; launching without timer")

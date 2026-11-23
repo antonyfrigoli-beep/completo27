@@ -4,7 +4,7 @@ import SwiftUI
 /// Downloads and applies patch packages from the online catalog.
 ///
 /// The IPA ships with NO embedded patches. Every `.3105` package is fetched
-/// from the backend catalog (`/v1/catalog`) and kept only in the protected session directory.
+/// from PatchHub (`/api/mobile/catalog`) and kept in the protected session directory.
 /// Toggling a card on/off applies or restores the corresponding project.
 @MainActor
 final class PatchCatalogStore: ObservableObject {
@@ -158,17 +158,7 @@ final class PatchCatalogStore: ObservableObject {
     }
 
     private static func normalizedCategory(_ raw: String?) -> String? {
-        guard let raw = raw?.trimmingCharacters(in: .whitespacesAndNewlines).uppercased(), !raw.isEmpty else {
-            return nil
-        }
-        let aliases = [
-            "HOLOGRAMA": "HOLOGRAMAS",
-            "TEXTURA": "TEXTURAS",
-            "OUTRO": "OUTROS",
-            "PATCH": "OUTROS",
-            "PATCHS": "OUTROS"
-        ]
-        return aliases[raw] ?? raw
+        PatchCatalog.Category(remoteFeature: raw)?.rawValue
     }
 
     // MARK: - Enabled state (persisted per item id)
@@ -218,11 +208,17 @@ final class PatchCatalogStore: ObservableObject {
             if await self.ensureDownloaded(item) == nil {
                 message = "ERRO — NÃO FOI POSSÍVEL VALIDAR O DOWNLOAD. TENTE NOVAMENTE."
             } else {
-                selectedID = await Task.detached(priority: .userInitiated) {
-                    PatchProjectLibrary.load()
-                        .first(where: { $0.packageURL.lastPathComponent == item.localFilename && $0.project != nil })?.uniqueID
+                let packageState = await Task.detached(priority: .userInitiated) { () -> (UUID?, Bool) in
+                    guard let libraryItem = PatchProjectLibrary.load()
+                        .first(where: { $0.packageURL.lastPathComponent == item.localFilename }) else {
+                        return (nil, false)
+                    }
+                    return (libraryItem.project == nil ? nil : libraryItem.uniqueID, libraryItem.project == nil)
                 }.value
-                if selectedID == nil {
+                selectedID = packageState.0
+                if packageState.1 {
+                    message = "PACOTE BAIXADO, MAS BLOQUEADO — TOQUE NO PATCH PARA DESBLOQUEAR."
+                } else if selectedID == nil {
                     message = "ERRO — PATCH BAIXADO, MAS AINDA NÃO ESTÁ PRONTO."
                 }
             }
@@ -263,6 +259,17 @@ final class PatchCatalogStore: ObservableObject {
             if !packageReady {
                 message = "ERRO — NÃO FOI POSSÍVEL VALIDAR O DOWNLOAD. TENTE NOVAMENTE."
             } else {
+                if !wasOn {
+                    let isLocked = await Task.detached(priority: .utility) {
+                        PatchProjectLibrary.load()
+                            .first(where: { $0.packageURL.lastPathComponent == filename })?.isLocked ?? false
+                    }.value
+                    if isLocked {
+                        self.activeID = nil
+                        onMain("PACOTE BAIXADO, MAS BLOQUEADO — TOQUE NO PATCH PARA DESBLOQUEAR.")
+                        return
+                    }
+                }
                 let result = await Task.detached(priority: .userInitiated) { () -> (String, Bool, Set<String>) in
                     var restored = Set<String>()
                     do {

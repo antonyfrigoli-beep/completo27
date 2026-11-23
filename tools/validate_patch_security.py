@@ -86,11 +86,23 @@ def main() -> int:
             and "legacy_license_key(key, device_id, activate=False)" in catalog_auth
             and "allow_legacy=True" in server,
             "catalog accepts only already-activated legacy reseller keys and does not consume unused keys")
-    license_catalog = between(license, "    static func fetchCatalog()", "    private static func openTransport(")
+    license_catalog = between(license, "    static func fetchCatalog()", "    /// Download and validate one package from the public PatchHub feed.")
     license_download = between(license, "    static func downloadItem(", "    // MARK: - Active Keys Counter")
-    require('X-Filza-Device' in license_catalog and 'X-Filza-Device' in license_download
-            and 'failureMessage' in license_catalog and 'HTTP \\(http.statusCode)' in license_catalog,
-            "client sends device binding for reseller keys and reports catalog authorization failures")
+    require('appendingPathComponent("mobile")' in license_catalog
+            and 'appendingPathComponent("catalog")' in license_catalog
+            and 'obj["patches"]' in license_catalog
+            and '"feature"' in license_catalog and '"packageURL"' in license_catalog,
+            "client consumes PatchHub /api/mobile/catalog and maps feature/package fields")
+    require('patchHubResolvedURL' in license
+            and 'resolved.scheme?.lowercased() == "https"' in license
+            and 'resolved.host?.lowercased() == baseURL.host?.lowercased()' in license
+            and 'http.url?.host?.lowercased() == patchHubBaseURL.host?.lowercased()' in license_download
+            and not any(header in license for header in ('X-Filza-Key', 'X-Filza-Device', 'X-Filza-Transport')),
+            "PatchHub package and icon URLs are HTTPS/same-host and receive no license headers")
+    require('let password = item.password?' in license_download
+            and 'PatchKeyStore.store(decoded.contentKey, for: summary)' in license_download
+            and 'package remains locked' in license_download,
+            "optional PatchHub package passwords unlock content keys with manual fallback")
 
     workspace = read("ThreeOneOSFive/helpers/PatchWorkspaceService.swift")
     require('removeItem(at: url)' in workspace
@@ -111,9 +123,16 @@ def main() -> int:
             "file browser hides internal cache paths and blocks legacy workspace deep links")
 
     view = read("ThreeOneOSFive/ContentView.swift")
-    require('case ap = "AP"' in view and 'case .ap: return .ap' in view
-            and 'ForEach(GameTab.allCases' in view,
-            "AP is a visible game category rendered from GameTab.allCases and mapped to the remote catalog")
+    required_categories = [
+        'case cache = "CACHE"', 'case avatar = "AVATAR"', 'case skin = "SKIN"',
+        'case external = "EXTERNAL"', 'case hologram = "HOLOGRAM"',
+        'return "Cachê"', 'return "Avatar"', 'return "Skin"',
+        'return "External"', 'return "Holograma"',
+    ]
+    require(all(category in view for category in required_categories)
+            and 'ForEach(GameTab.allCases' in view
+            and not any(old in view for old in ('case ffNormal =', 'case ffMax =', 'case ap =', 'case textures =', 'case others =')),
+            "dashboard renders only the five requested PatchHub categories")
     require(('FILZA EXTERNAL BYPASS EXTERNAL' in view or 'FILZA EXTERNAL BYPASS' in view)
             and 'TOMMY' not in view,
             "dashboard uses Filza branding and contains no Tommy brand string")
