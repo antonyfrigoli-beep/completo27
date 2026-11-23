@@ -18,7 +18,7 @@ final class PatchCatalogStore: ObservableObject {
     private let cacheDir: URL
     private var refreshInFlight = false
     private var readyFilenames: Set<String> = []
-    private var inFlightDownloads: [String: Task<URL?, Never>] = [:]
+    private var inFlightDownloads: [String: Task<PatchHubDownloadOutcome, Never>] = [:]
 
     init() {
         cacheDir = (try? PatchProjectLibrary.packageRootURL())
@@ -53,6 +53,12 @@ final class PatchCatalogStore: ObservableObject {
         let incoming = catalog.items
         publishCatalogIfChanged(incoming)
 
+        guard !incoming.isEmpty else {
+            PatchProjectStore.shared.reload()
+            downloadError = "Nenhum patch .3105 está publicado no PatchHub no momento. Publique/ative um pacote no site e atualize."
+            return
+        }
+
         // Skip packages already verified in this process, but re-check their
         // path in case the cache was removed while the app was open.
         let knownReady = readyFilenames
@@ -68,23 +74,26 @@ final class PatchCatalogStore: ObservableObject {
         }
 
         var failedDownloads = 0
+        var firstDownloadFailure: String?
         let batchSize = 2
         for start in stride(from: 0, to: candidates.count, by: batchSize) {
             let end = min(start + batchSize, candidates.count)
             let batch = Array(candidates[start..<end])
-            await withTaskGroup(of: (String, Bool).self) { group in
+            await withTaskGroup(of: (String, PatchHubDownloadOutcome).self) { group in
                 for item in batch {
                     let expectedFilename = filename(for: item)
                     let store = self
                     group.addTask {
-                        (expectedFilename, await store.ensureDownloaded(item) != nil)
+                        (expectedFilename, await store.ensureDownloaded(item))
                     }
                 }
-                for await (expectedFilename, downloaded) in group {
-                    if downloaded {
+                for await (expectedFilename, outcome) in group {
+                    switch outcome {
+                    case .success:
                         readyFilenames.insert(expectedFilename)
-                    } else {
+                    case .failure(let reason):
                         failedDownloads += 1
+                        if firstDownloadFailure == nil { firstDownloadFailure = reason }
                     }
                 }
             }
@@ -92,7 +101,8 @@ final class PatchCatalogStore: ObservableObject {
 
         PatchProjectStore.shared.reload()
         if failedDownloads > 0 {
-            downloadError = "Não foi possível carregar \(failedDownloads) opção(ões). Elas continuam visíveis; toque para tentar novamente."
+            let detail = firstDownloadFailure.map { " Primeiro erro: \($0)" } ?? ""
+            downloadError = "Não foi possível carregar \(failedDownloads) opção(ões). Elas continuam visíveis; toque para tentar novamente.\(detail)"
         }
     }
 
@@ -108,7 +118,7 @@ final class PatchCatalogStore: ObservableObject {
 
     /// Reuses a prefetch task when the user taps an item that is already being
     /// downloaded. Cache decryption and validation run away from the UI thread.
-    private func ensureDownloaded(_ item: FilzaLicense.CatalogItem) async -> URL? {
+    private func ensureDownloaded(_ item: FilzaLicense.CatalogItem) async -> PatchHubDownloadOutcome {
         let filename = filename(for: item)
         let destination = cacheDir.appendingPathComponent(filename)
 
@@ -121,7 +131,7 @@ final class PatchCatalogStore: ObservableObject {
         }.value
         if validCache {
             readyFilenames.insert(filename)
-            return destination
+            return .success(destination)
         }
 
         // Re-check after the asynchronous disk validation: another caller may
@@ -136,9 +146,7 @@ final class PatchCatalogStore: ObservableObject {
         inFlightDownloads[item.id] = task
         let result = await task.value
         inFlightDownloads[item.id] = nil
-        if result != nil {
-            readyFilenames.insert(filename)
-        }
+        if case .success = result { readyFilenames.insert(filename) }
         return result
     }
 
@@ -205,9 +213,10 @@ final class PatchCatalogStore: ObservableObject {
             var message = "PATCH BAIXADO — PRONTO PARA SELECIONAR"
             var selectedID: UUID?
 
-            if await self.ensureDownloaded(item) == nil {
-                message = "ERRO — NÃO FOI POSSÍVEL VALIDAR O DOWNLOAD. TENTE NOVAMENTE."
-            } else {
+            switch await self.ensureDownloaded(item) {
+            case .failure(let reason):
+                message = "ERRO NO DOWNLOAD — \(reason)"
+            case .success:
                 let packageState = await Task.detached(priority: .userInitiated) { () -> (UUID?, Bool) in
                     guard let libraryItem = PatchProjectLibrary.load()
                         .first(where: { $0.packageURL.lastPathComponent == item.localFilename }) else {
@@ -252,12 +261,19 @@ final class PatchCatalogStore: ObservableObject {
             var resultOn = wasOn
             var restoredPeerIDs = Set<String>()
             var packageReady = wasOn
+            var downloadFailure: String?
             if !wasOn {
-                packageReady = await self.ensureDownloaded(item) != nil
+                switch await self.ensureDownloaded(item) {
+                case .success:
+                    packageReady = true
+                case .failure(let reason):
+                    packageReady = false
+                    downloadFailure = reason
+                }
             }
 
             if !packageReady {
-                message = "ERRO — NÃO FOI POSSÍVEL VALIDAR O DOWNLOAD. TENTE NOVAMENTE."
+                message = "ERRO NO DOWNLOAD — \(downloadFailure ?? "Não foi possível validar o pacote .3105.")"
             } else {
                 if !wasOn {
                     let isLocked = await Task.detached(priority: .utility) {

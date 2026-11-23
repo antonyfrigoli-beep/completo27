@@ -99,10 +99,19 @@ def main() -> int:
             and 'http.url?.host?.lowercased() == patchHubBaseURL.host?.lowercased()' in license_download
             and not any(header in license for header in ('X-Filza-Key', 'X-Filza-Device', 'X-Filza-Transport')),
             "PatchHub package and icon URLs are HTTPS/same-host and receive no license headers")
+    require('enum PatchHubDownloadOutcome' in license
+            and 'case .unsupportedFormat:' in license
+            and 'respondeu HTTP' in license_download
+            and 'cache protegido do app' in license,
+            "PatchHub download reports format, HTTP, and protected-cache failures without weakening package validation")
     require('let password = item.password?' in license_download
             and 'PatchKeyStore.store(decoded.contentKey, for: summary)' in license_download
             and 'package remains locked' in license_download,
             "optional PatchHub package passwords unlock content keys with manual fallback")
+    require('Nenhum patch .3105 está publicado no PatchHub' in catalog
+            and 'ERRO NO DOWNLOAD — \\(reason)' in catalog
+            and 'Task<PatchHubDownloadOutcome, Never>' in catalog,
+            "empty PatchHub feeds and per-item failures have an explicit user-facing diagnosis")
 
     workspace = read("ThreeOneOSFive/helpers/PatchWorkspaceService.swift")
     require('removeItem(at: url)' in workspace

@@ -12,6 +12,11 @@ struct FilzaValidationResult {
     let lifetime: Bool?
 }
 
+enum PatchHubDownloadOutcome: Sendable {
+    case success(URL)
+    case failure(String)
+}
+
 /// Validates login keys through the publicCheckKey tRPC endpoint.
 /// The PatchHub feed is public; unrelated Filza backend routes still use `baseURL`.
 enum FilzaLicense {
@@ -24,6 +29,41 @@ enum FilzaLicense {
         #if DEBUG
         NSLog("[FilzaLicense] %@", message)
         #endif
+    }
+
+    private static func downloadFailureMessage(_ error: Error, stage: String) -> String {
+        if stage == "package validation", let packageError = error as? PatchPackageError {
+            switch packageError {
+            case .unsupportedFormat:
+                return "O servidor não enviou um pacote .3105 compatível com o app (pode ter retornado uma página HTML ou outro arquivo)."
+            case .unsupportedVersion:
+                return "O pacote .3105 usa uma versão que esta versão do app não reconhece."
+            case .invalidPasswordOrCorruptedPackage:
+                return "O pacote .3105 está incompleto ou corrompido."
+            default:
+                return "O conteúdo recebido não passou pela validação do pacote .3105."
+            }
+        }
+        if let urlError = error as? URLError {
+            switch urlError.code {
+            case .notConnectedToInternet:
+                return "Sem conexão com a internet para baixar o pacote."
+            case .timedOut:
+                return "O servidor demorou para responder; tente baixar novamente."
+            case .cannotFindHost, .cannotConnectToHost, .dnsLookupFailed, .networkConnectionLost:
+                return "Não foi possível conectar ao servidor do PatchHub."
+            default:
+                return "Falha de rede ao baixar o pacote .3105."
+            }
+        }
+        switch stage {
+        case "protected cache write":
+            return "O pacote foi recebido, mas não pôde ser salvo no cache protegido do app."
+        case "cache verification":
+            return "O pacote foi salvo, mas a verificação do cache protegido falhou."
+        default:
+            return "Não foi possível validar ou salvar o pacote .3105."
+        }
     }
 
     // MARK: - Device HWID (anti-crack binding)
@@ -297,6 +337,9 @@ enum FilzaLicense {
                     rank: o["rank"] as? Int
                 )
             }
+            guard arr.isEmpty || !items.isEmpty else {
+                return (nil, "O site listou patches, mas nenhum tem categoria, URL HTTPS e nome de arquivo compatíveis com o app.")
+            }
             return (Catalog(items: items), nil)
         } catch {
             log("catalog request failed: \(error.localizedDescription)")
@@ -306,11 +349,15 @@ enum FilzaLicense {
 
     /// Download and validate one package from the public PatchHub feed.
     @discardableResult
-    static func downloadItem(_ item: CatalogItem) async -> URL? {
+    static func downloadItem(_ item: CatalogItem) async -> PatchHubDownloadOutcome {
         guard let url = URL(string: item.url),
               url.scheme?.lowercased() == "https",
-              url.host?.lowercased() == patchHubBaseURL.host?.lowercased() else { return nil }
-        guard let destDir = try? PatchProjectLibrary.packageRootURL() else { return nil }
+              url.host?.lowercased() == patchHubBaseURL.host?.lowercased() else {
+            return .failure("O link do pacote não usa HTTPS no domínio autorizado do PatchHub.")
+        }
+        guard let destDir = try? PatchProjectLibrary.packageRootURL() else {
+            return .failure("Não foi possível abrir o cache protegido do app.")
+        }
         let filename = item.localFilename
         let dest = destDir.appendingPathComponent(filename)
         var stage = "download request"
@@ -324,10 +371,16 @@ enum FilzaLicense {
             request.setValue("application/octet-stream", forHTTPHeaderField: "Accept")
             let (tmp, response) = try await session.download(for: request)
             stage = "HTTP response validation"
-            guard let http = response as? HTTPURLResponse,
-                  http.url?.scheme?.lowercased() == "https",
-                  http.url?.host?.lowercased() == patchHubBaseURL.host?.lowercased(),
-                  (200..<300).contains(http.statusCode) else { return nil }
+            guard let http = response as? HTTPURLResponse else {
+                return .failure("O PatchHub devolveu uma resposta HTTP inválida.")
+            }
+            guard http.url?.scheme?.lowercased() == "https",
+                  http.url?.host?.lowercased() == patchHubBaseURL.host?.lowercased() else {
+                return .failure("O download foi redirecionado para um domínio HTTPS não autorizado.")
+            }
+            guard (200..<300).contains(http.statusCode) else {
+                return .failure("O servidor PatchHub respondeu HTTP \(http.statusCode).")
+            }
             let data = try Data(contentsOf: tmp, options: .mappedIfSafe)
             stage = "package validation"
             let summary = try PatchPackageCodec.inspect(data)
@@ -355,11 +408,11 @@ enum FilzaLicense {
             stage = "cache verification"
             let published = try PatchProjectLibrary.readPackage(at: dest)
             _ = try PatchPackageCodec.inspect(published)
-            return dest
+            return .success(dest)
         } catch {
             let nsError = error as NSError
             log("catalog download failed for item \(item.id) at \(stage) (domain=\(nsError.domain), code=\(nsError.code))")
-            return nil
+            return .failure(downloadFailureMessage(error, stage: stage))
         }
     }
 
