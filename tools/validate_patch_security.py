@@ -165,28 +165,50 @@ def main() -> int:
     require(automatic_guidance in view,
             "automatic mode explains self-activation and recommends Manual if unsupported")
     activation = read("ThreeOneOSFive/helpers/LicenseActivationView.swift")
-    require('verseCard' in activation
-            and 'Peça a Deus que abençoe os seus planos, e eles darão certo.' in activation
-            and 'PROVÉRBIOS 16:3' in activation,
-            "original Portuguese Proverbs 16:3 verse card is present on the activation screen")
+    require('@ObservedObject var manager: LicenseManager' in activation
+            and 'manager.activate(key: key)' in activation
+            and 'manager.rememberedKey()' in activation
+            and 'manager.deactivate()' in activation
+            and 'if manager.isActive { onAuthenticated() }' in activation
+            and 'IOSKeySession' not in activation
+            and 'session.submit' not in activation,
+            "new login UI delegates key activation and stored-key state to the existing LicenseManager")
+    paste_method = between(activation, "    private func pasteKey() {", "    private func activate() {")
+    require('Button(action: pasteKey)' in activation
+            and 'UIPasteboard.general.string' in paste_method
+            and activation.count('UIPasteboard.general.string') == 1,
+            "login reads the clipboard only after the user taps the paste-key button")
     portuguese_activation = [
-        "ACESSO DE LICENÇA", "ACESSAR PAINEL",
-        "Use a licença vinculada a este dispositivo.", "SUA CHAVE AQUI",
-        "Lembrar chave neste dispositivo", "JOGADORES\\nONLINE",
-        "Chaves ativas agora na IPA",
-        "Canal oficial de atualizações", "LICENÇA ATIVA",
-        "Chave validada e sincronizada", "HORAS", "SEG",
+        "ACESSO LICENCIADO", "EXTERNAL X", "Informe sua key para continuar.",
+        "Digite sua key iOS", "Lembrar key neste dispositivo",
+        "Colar key da área de transferência", "CONTINUAR", "LICENÇA ATIVA",
     ]
     require(all(text in activation for text in portuguese_activation),
-            "activation screen labels are translated to Brazilian Portuguese")
+            "new activation screen uses the Portuguese SwiftUI login presentation from the source ZIP")
     spanish_activation = [
         "ACCESS PORTAL", "ENTRAR EN FILZA", "Introduce tu key",
-        "SUA KEY AQUI", "Recordar key", "ACCEDER AHORA",
-        "JUGADORES ONLINE", "Keys activas ahora", "Actualizaciones",
-        "LICENCIA ACTIVA", "Key validada y sincronizada", "HOURS", "SEC",
+        "Recordar key", "ACCEDER AHORA", "JUGADORES ONLINE", "HOURS", "SEC",
     ]
     require(not any(text in activation for text in spanish_activation),
-            "activation screen contains none of the previous Spanish/English labels")
+            "activation screen contains none of the previous Spanish labels")
+    app_entry = read("ThreeOneOSFive/App.swift")
+    flow_markers = [
+        "CalculadoraIPhoneView {",
+        "LicenseActivationView(manager: licenseManager)",
+        "GameSelectionView {",
+        "ContentView()",
+    ]
+    flow_positions = [app_entry.find(marker) for marker in flow_markers]
+    require(all(position >= 0 for position in flow_positions)
+            and flow_positions == sorted(flow_positions),
+            "app entry presents calculator, current-license login, game selection and dashboard in order")
+    game_selection = read("ThreeOneOSFive/views/GameSelectionView.swift")
+    require('Text("FF NORMAL")' in game_selection
+            and 'Image("FreeFireNormal")' in game_selection
+            and "MAX" not in game_selection
+            and 'subtitle: "MAX"' not in view
+            and 'freefiremax' not in view,
+            "entry and dashboard expose only the FF Normal game choice")
     info = plistlib.loads((APP / "Info.plist").read_bytes())
     require(info.get("CFBundleShortVersionString") == "5.0.11"
             and info.get("CFBundleVersion") == "19",
