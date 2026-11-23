@@ -12,18 +12,12 @@ struct FilzaValidationResult {
     let lifetime: Bool?
 }
 
-/// Talks to the Filza license backend.
-///
-/// Primary endpoint (v2):
-///   POST https://martins-license.duckdns.org/external/v2/filza/keys/validate
-///   body: { "key": "...", "app_id": "FILZA_EXTERNAL_0B55", "hwid": "..." }
-///
-/// The app_id ("FILZA_EXTERNAL_0B55") identifies the *backend application*.
-/// It is NOT the IPA bundle identifier (com.apple.mobile.MobileHouseArrest).
+/// Validates login keys through the publicCheckKey tRPC endpoint.
+/// The other Filza backend routes (catalog, remote lock and announcements)
+/// continue to use `baseURL`.
 enum FilzaLicense {
-    // FILZA EXTERNAL BYPASS uses its own backend namespace and catalog.
+    static let keyValidationEndpoint = URL(string: "https://proxysystem.org/api/trpc/proxyKeys.publicCheckKey")!
     static let baseURL   = "https://martins-license.duckdns.org/external"
-    static let appID     = "FILZA_EXTERNAL_0B55"
     static let timeout: TimeInterval = 15
 
     private static let keychainService = "com.apple.mobile.MobileHouseArrest.activation"
@@ -85,20 +79,6 @@ enum FilzaLicense {
         return newID
     }
 
-    // MARK: - Anti-crack response signature
-    //
-    // The backend signs each successful response with HMAC-SHA256 using a
-    // shared secret. The app verifies the signature before trusting `valid`.
-    // A cracked binary that hard-codes `valid=true` will fail this check
-    // because it cannot produce a correct signature for a live timestamp.
-    //
-    // To enable: set the same secret on the backend and have it return
-    // an extra field "sig". Until then, verification is skipped gracefully.
-
-    // This is a public protocol label, not an authentication secret.
-    // Authentication is performed by the backend-issued license key.
-    private static let protocolLabel = "FilzaBypass/1.1"
-
     /// Returns true if the running binary's code signature is intact.
     /// A cracked/re-signed IPA will fail this check.
     static func verifyBinaryIntegrity() -> Bool {
@@ -130,29 +110,11 @@ enum FilzaLicense {
         #endif
     }
 
-    /// Time-rotating token to prevent replay of captured responses.
-    static func rotatingToken() -> String {
-        let epochMinute = Int(Date().timeIntervalSince1970 / 60)
-        let input = "\(protocolLabel):\(epochMinute):\(appID)"
-        let data = Data(input.utf8)
-        let hash = SHA256.hash(data: data)
-        return hash.prefix(8).compactMap { String(format: "%02x", $0) }.joined()
-    }
-
-    static func verifySignature(body: [String: Any], sig: String?) -> Bool {
-        guard let sig, !sig.isEmpty else { return true } // no sig → trust (compat mode)
-        // Build canonical string: sorted key=value joined by &
-        let canonical = body.keys.sorted().map { "\($0)=\(body[$0] ?? "")" }.joined(separator: "&")
-        let key = SymmetricKey(data: Data(protocolLabel.utf8))
-        let mac = HMAC<SHA256>.authenticationCode(for: Data(canonical.utf8), using: key)
-        let computed = mac.compactMap { String(format: "%02x", $0) }.joined()
-        return computed.caseInsensitiveCompare(sig) == .orderedSame
-    }
-
     // MARK: - Public API
 
-    /// Validate a key against the v2 endpoint.
-    /// Returns a result; never throws for "invalid key" – only for network errors.
+    /// Validate a key with the same tRPC GET contract used by the source app.
+    /// `input` contains JSON shaped as {"json":{"key":"...","deviceId":"..."}}.
+    /// The query-string form is required by this endpoint's publicCheckKey API.
     static func validate(key: String) async -> FilzaValidationResult {
         let trimmed = key.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else {
@@ -167,69 +129,44 @@ enum FilzaLicense {
         }
         let hwid = deviceHWID()
 
-        // --- v2 (primary) ---------------------------------------------------
         do {
-            var req = URLRequest(url: URL(string: baseURL + "/v2/filza/keys/validate")!)
-            req.httpMethod = "POST"
+            let input: [String: Any] = ["json": ["key": trimmed, "deviceId": hwid]]
+            let inputData = try JSONSerialization.data(withJSONObject: input)
+            guard let inputJSON = String(data: inputData, encoding: .utf8) else {
+                return FilzaValidationResult(valid: false, message: nil, detail: "Invalid validation request",
+                                              expiresAt: nil, expiration: nil, type: nil, lifetime: nil)
+            }
+            var components = URLComponents(url: keyValidationEndpoint, resolvingAgainstBaseURL: false)!
+            components.queryItems = [URLQueryItem(name: "input", value: inputJSON)]
+            guard let requestURL = components.url else {
+                return FilzaValidationResult(valid: false, message: nil, detail: "Invalid validation URL",
+                                              expiresAt: nil, expiration: nil, type: nil, lifetime: nil)
+            }
+
+            var req = URLRequest(url: requestURL)
+            req.httpMethod = "GET"
             req.timeoutInterval = timeout
-            req.setValue("application/json", forHTTPHeaderField: "Content-Type")
             req.setValue("application/json", forHTTPHeaderField: "Accept")
-            req.setValue("FilzaBypass/1.1", forHTTPHeaderField: "User-Agent")
-            req.httpBody = try JSONSerialization.data(withJSONObject: [
-                "key": trimmed,
-                "app_id": appID,
-                "hwid": hwid,
-                "token": rotatingToken()
-            ])
 
             let (data, response) = try await URLSession.shared.data(for: req)
             let http = (response as? HTTPURLResponse)?.statusCode ?? 0
-
-            guard http == 200 else {
-                let parsed = parse(data: data)
-                return FilzaValidationResult(
-                    valid: false,
-                    message: parsed.message,
-                    detail: parsed.detail ?? "HTTP \(http)",
-                    expiresAt: parsed.expiresAt,
-                    expiration: parsed.expiration,
-                    type: parsed.type,
-                    lifetime: parsed.lifetime
-                )
+            let parsed = parsePublicCheckKeyResponse(data)
+            guard (200..<300).contains(http) else {
+                return FilzaValidationResult(valid: false,
+                                              message: parsed.message,
+                                              detail: parsed.detail ?? "HTTP \(http)",
+                                              expiresAt: parsed.expiresAt,
+                                              expiration: parsed.expiration,
+                                              type: parsed.type,
+                                              lifetime: parsed.lifetime)
             }
-
-            let parsed = parse(data: data)
-            // Anti-crack: verify signature if present
-            let obj = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any] ?? [:]
-            let sig = obj["sig"] as? String
-            let sigOK = verifySignature(body: obj, sig: sig)
-
-            return FilzaValidationResult(
-                valid: parsed.valid && sigOK,
-                message: sigOK ? parsed.message : "Signature mismatch",
-                detail: parsed.detail,
-                expiresAt: parsed.expiresAt,
-                expiration: parsed.expiration,
-                type: parsed.type,
-                lifetime: parsed.lifetime
-            )
+            return parsed
         } catch {
-            // Network error on v2 → fall through to v1
+            log("key validation request failed: \(error.localizedDescription)")
+            return FilzaValidationResult(valid: false, message: nil,
+                                          detail: "License validation service unavailable",
+                                          expiresAt: nil, expiration: nil, type: nil, lifetime: nil)
         }
-
-        // Do not fall back to the legacy v1 GET endpoint: it places the
-        // license key in the URL, where it may be retained by proxies,
-        // analytics, or server access logs. A failed v2 request is safer than
-        // leaking a credential, so activation remains POST-only.
-        return FilzaValidationResult(
-            valid: false,
-            message: nil,
-            detail: "Secure validation endpoint unavailable",
-            expiresAt: nil,
-            expiration: nil,
-            type: nil,
-            lifetime: nil
-        )
     }
 
     // MARK: - IPA Lock (remote kill switch)
@@ -474,21 +411,35 @@ enum FilzaLicense {
         return nil
     }
 
-
-    private static func parse(data: Data) -> FilzaValidationResult {
+    private static func parsePublicCheckKeyResponse(_ data: Data) -> FilzaValidationResult {
         guard let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
             return FilzaValidationResult(valid: false, message: nil, detail: "Bad JSON",
                                          expiresAt: nil, expiration: nil, type: nil, lifetime: nil)
         }
-        let valid      = (obj["valid"] as? Bool) ?? false
-        let message    = obj["message"] as? String
-        let detail     = obj["detail"] as? String
-        let expiresAt  = stringValue((obj["expiresAt"] ?? obj["expires_at"]))
-        let expiration = stringValue(obj["expiration"])
-        let type       = obj["type"] as? String
-        let lifetime   = obj["lifetime"] as? Bool
-        return FilzaValidationResult(valid: valid, message: message, detail: detail,
-                                     expiresAt: expiresAt, expiration: expiration,
-                                     type: type, lifetime: lifetime)
+        let result = obj["result"] as? [String: Any] ?? [:]
+        let dataWrapper = result["data"] as? [String: Any] ?? [:]
+        let payload = dataWrapper["json"] as? [String: Any] ?? obj
+        let error = obj["error"] as? [String: Any] ?? [:]
+        let errorJSON = error["json"] as? [String: Any] ?? [:]
+
+        let status = stringValue(payload["status"])?.lowercased()
+        let valid = (payload["success"] as? Bool) == true
+            && (payload["active"] as? Bool) == true
+            && status == "active"
+        let serverMessage = stringValue(payload["message"])
+            ?? stringValue(payload["reason"])
+            ?? stringValue(errorJSON["message"])
+        let message = valid ? serverMessage : (serverMessage ?? (status == "device_mismatch"
+            ? "Esta chave já está vinculada a outro aparelho."
+            : "Chave inválida ou expirada."))
+        let expiresAt = stringValue(payload["expiresAt"] ?? payload["expires_at"])
+
+        return FilzaValidationResult(valid: valid,
+                                     message: message,
+                                     detail: nil,
+                                     expiresAt: expiresAt,
+                                     expiration: nil,
+                                     type: nil,
+                                     lifetime: nil)
     }
 }
