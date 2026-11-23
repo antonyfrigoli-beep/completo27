@@ -5,7 +5,8 @@ import Security
 
 enum PatchPackageCodec {
     private static let magic = Data("3105PATCH\0".utf8)
-    static let latestSchemaVersion = 2
+    private static let latestReadableSchemaVersion = 3
+    private static let latestWritableSchemaVersion = 2
     private static let minimumSchemaVersion = 1
 
     private struct Envelope: Codable {
@@ -34,7 +35,7 @@ enum PatchPackageCodec {
         try encode(
             project: project,
             password: password,
-            schemaVersion: latestSchemaVersion,
+            schemaVersion: latestWritableSchemaVersion,
             kdfIterations: kdfIterations
         )
     }
@@ -59,7 +60,7 @@ enum PatchPackageCodec {
         kdfIterations: Int
     ) throws -> EncodedPatchPackage {
         try validate(project)
-        guard (minimumSchemaVersion...latestSchemaVersion).contains(schemaVersion) else {
+        guard (minimumSchemaVersion...latestWritableSchemaVersion).contains(schemaVersion) else {
             throw PatchPackageError.unsupportedVersion
         }
         let contentKey = try randomData(count: 32)
@@ -188,7 +189,7 @@ enum PatchPackageCodec {
         }
         try validate(project)
         let schemaVersion = requestedSchemaVersion ?? oldEnvelope.schemaVersion
-        guard (minimumSchemaVersion...latestSchemaVersion).contains(schemaVersion) else {
+        guard (minimumSchemaVersion...latestReadableSchemaVersion).contains(schemaVersion) else {
             throw PatchPackageError.unsupportedVersion
         }
         let envelope = try makeEnvelope(
@@ -346,7 +347,7 @@ enum PatchPackageCodec {
         } catch {
             throw PatchPackageError.invalidPasswordOrCorruptedPackage
         }
-        guard (minimumSchemaVersion...latestSchemaVersion).contains(envelope.schemaVersion) else {
+        guard (minimumSchemaVersion...latestReadableSchemaVersion).contains(envelope.schemaVersion) else {
             throw PatchPackageError.unsupportedVersion
         }
         guard envelope.keyFingerprint.count == 32,
@@ -356,7 +357,7 @@ enum PatchPackageCodec {
         }
         if envelope.isPasswordProtected {
             guard envelope.publicContentKey == nil,
-                  (minimumSchemaVersion...latestSchemaVersion).contains(
+                  (minimumSchemaVersion...latestWritableSchemaVersion).contains(
                     envelope.keyAADVersion ?? envelope.schemaVersion
                   ),
                   envelope.kdfSalt?.count == 16,

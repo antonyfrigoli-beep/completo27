@@ -108,6 +108,14 @@ def main() -> int:
             and 'PatchKeyStore.store(decoded.contentKey, for: summary)' in license_download
             and 'package remains locked' in license_download,
             "optional PatchHub package passwords unlock content keys with manual fallback")
+    codec = read("ThreeOneOSFive/helpers/PatchPackageCodec.swift")
+    require('latestReadableSchemaVersion = 3' in codec
+            and 'latestWritableSchemaVersion = 2' in codec
+            and 'schemaVersion: latestWritableSchemaVersion' in codec
+            and 'payloadAAD(for: envelope.packageID, version: envelope.schemaVersion)' in codec
+            and '(minimumSchemaVersion...latestWritableSchemaVersion)' in codec
+            and '(minimumSchemaVersion...latestReadableSchemaVersion).contains(schemaVersion)' in codec,
+            "schema 3 packages are read with authenticated payloads, preserved on edit, and fresh packages/password AAD stay conservative")
     require('Nenhum patch .3105 está publicado no PatchHub' in catalog
             and 'ERRO NO DOWNLOAD — \\(reason)' in catalog
             and 'Task<PatchHubDownloadOutcome, Never>' in catalog,
@@ -220,10 +228,10 @@ def main() -> int:
             "entry and dashboard expose only the FF Normal game choice")
     info = plistlib.loads((APP / "Info.plist").read_bytes())
     require(info.get("CFBundleShortVersionString") == "5.0.11"
-            and info.get("CFBundleVersion") == "19",
+            and info.get("CFBundleVersion") == "20",
             "source Info.plist has the new version/build required to update the installed app")
     project_settings = read("ThreeOneOSFive.xcodeproj/project.pbxproj")
-    require(project_settings.count("CURRENT_PROJECT_VERSION = 19;") == 2
+    require(project_settings.count("CURRENT_PROJECT_VERSION = 20;") == 2
             and project_settings.count("MARKETING_VERSION = 5.0.11;") == 2,
             "both Xcode configurations generate the new version/build")
     require("TutorialsView.swift in Sources" in project_settings
