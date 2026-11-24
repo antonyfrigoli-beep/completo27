@@ -75,7 +75,6 @@ struct LicenseActivationView: View {
             }
             .scrollDismissesKeyboard(.interactively)
         }
-        .preferredColorScheme(.dark)
         .onAppear {
             key = manager.rememberedKey() ?? ""
         }

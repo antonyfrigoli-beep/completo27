@@ -456,9 +456,11 @@ struct PremiumPatchCard: View {
     let isBusy: Bool
     let isAvailable: Bool
     let isDownloadable: Bool
-    let isSpanish: Bool
-    let previewURL: String?
-    let action: () -> Void
+	let isSpanish: Bool
+	let previewURL: String?
+	let metadata: String?
+	let detailsAction: (() -> Void)?
+	let action: () -> Void
 
     private var canStartAction: Bool { isAvailable || isDownloadable || isEnabled || isPending }
     private var displayName: String {
@@ -502,7 +504,7 @@ struct PremiumPatchCard: View {
     }
     private var iconSize: CGFloat { previewURL == nil ? 38 : 40 }
 
-    init(name: String, target: String, color: Color, isEnabled: Bool, isPending: Bool, isBusy: Bool, isAvailable: Bool = true, isDownloadable: Bool = false, previewURL: String? = nil, isSpanish: Bool = false, action: @escaping () -> Void) {
+	init(name: String, target: String, color: Color, isEnabled: Bool, isPending: Bool, isBusy: Bool, isAvailable: Bool = true, isDownloadable: Bool = false, previewURL: String? = nil, isSpanish: Bool = false, metadata: String? = nil, detailsAction: (() -> Void)? = nil, action: @escaping () -> Void) {
         self.name = name
         self.target = target
         self.color = color
@@ -511,9 +513,11 @@ struct PremiumPatchCard: View {
         self.isBusy = isBusy
         self.isAvailable = isAvailable
         self.isDownloadable = isDownloadable
-        self.previewURL = previewURL
-        self.isSpanish = isSpanish
-        self.action = action
+		self.previewURL = previewURL
+		self.isSpanish = isSpanish
+		self.metadata = metadata
+		self.detailsAction = detailsAction
+		self.action = action
     }
 
     var body: some View {
@@ -551,13 +555,19 @@ struct PremiumPatchCard: View {
                             .lineLimit(2)
                             .multilineTextAlignment(.leading)
                             .minimumScaleFactor(0.75)
-                        Text(isPending
+	                        Text(isPending
                              ? (isSpanish ? "SELECCIÓN PREPARADA" : "SELEÇÃO PREPARADA")
                              : (isDownloadable && !isEnabled ? (isSpanish ? "PAQUETE REMOTO" : "PACOTE REMOTO") : (isSpanish ? "MÓDULO DE JUEGO" : "MÓDULO DE JOGO")))
                             .font(.system(size: 7, weight: .bold, design: .monospaced))
                             .tracking(0.2)
                             .foregroundStyle(.white.opacity(0.45))
                             .lineLimit(1)
+						if let metadata, !metadata.isEmpty {
+							Text(metadata)
+								.font(.system(size: 8, weight: .medium, design: .monospaced))
+								.foregroundStyle(.white.opacity(0.38))
+								.lineLimit(1)
+						}
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
                 }
@@ -568,8 +578,17 @@ struct PremiumPatchCard: View {
 
             Spacer(minLength: 0)
 
-            VStack(alignment: .trailing, spacing: 4) {
-                Text(stateLabel)
+			VStack(alignment: .trailing, spacing: 4) {
+				if let detailsAction {
+					Button(action: detailsAction) {
+						Image(systemName: "info.circle")
+							.font(.system(size: 13, weight: .semibold))
+							.foregroundStyle(.white.opacity(0.62))
+					}
+					.buttonStyle(.plain)
+					.accessibilityLabel("Ver detalhes de \(displayName)")
+				}
+				Text(stateLabel)
                     .font(.system(size: 7, weight: .black, design: .monospaced))
                     .tracking(0.25)
                     .foregroundStyle(stateTint)
@@ -652,5 +671,77 @@ struct StatusMessageBar: View {
         .overlay(alignment: .top) {
             Rectangle().fill(Color.white.opacity(0.08)).frame(height: 0.5)
         }
+    }
+}
+
+struct PatchDetailsView: View {
+    let name: String
+    let target: String
+    let status: String
+    let metadata: String
+    let packageName: String
+    let source: String
+    let isProtected: Bool
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        NavigationStack {
+            ScrollView(showsIndicators: false) {
+                VStack(alignment: .leading, spacing: 16) {
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text(target.uppercased())
+                            .font(.system(size: 10, weight: .black, design: .monospaced))
+                            .foregroundStyle(AppTheme.secondaryAccent)
+                        Text(name)
+                            .font(.system(size: 25, weight: .black, design: .rounded))
+                            .foregroundStyle(.primary)
+                        Text("Informações do pacote e estado da validação")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                    }
+
+                    VStack(spacing: 0) {
+                        PatchDetailRow(title: "Estado", value: status, icon: "circle.lefthalf.filled")
+                        PatchDetailRow(title: "Metadados", value: metadata, icon: "tag.fill")
+                        PatchDetailRow(title: "Pacote", value: packageName, icon: "doc.zipper")
+                        PatchDetailRow(title: "Origem", value: source, icon: "network")
+                        PatchDetailRow(title: "Proteção", value: isProtected ? "Autenticado e protegido" : "Validação pendente", icon: "checkmark.shield.fill")
+                    }
+                    .background(Color.primary.opacity(0.06), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+                }
+                .padding(20)
+            }
+            .navigationTitle("Detalhes")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("Fechar") { dismiss() }
+                }
+            }
+        }
+    }
+}
+
+private struct PatchDetailRow: View {
+    let title: String
+    let value: String
+    let icon: String
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 12) {
+            Image(systemName: icon)
+                .frame(width: 22)
+                .foregroundStyle(AppTheme.accent)
+            Text(title)
+                .foregroundStyle(.secondary)
+            Spacer(minLength: 8)
+            Text(value)
+                .font(.system(size: 12, weight: .semibold, design: .monospaced))
+                .multilineTextAlignment(.trailing)
+                .lineLimit(3)
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 12)
+        .overlay(alignment: .bottom) { Rectangle().fill(Color.primary.opacity(0.08)).frame(height: 0.5) }
     }
 }

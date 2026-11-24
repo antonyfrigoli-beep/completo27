@@ -7,6 +7,8 @@ struct SettingsView: View {
     @EnvironmentObject private var licenseManager: LicenseManager
     @State private var now = Date()
     @State private var revealLicenseKey = false
+    @AppStorage("filza.appearance") private var appearance = "system"
+    @State private var integrityVerified = false
 
     private let timer = Timer.publish(every: 30, on: .main, in: .common).autoconnect()
 
@@ -52,6 +54,32 @@ struct SettingsView: View {
                             licenseKeyRow
                         }
 
+                        settingsCard("APARÊNCIA", subtitle: "Escolha como o app deve aparecer", icon: "circle.lefthalf.filled") {
+                            Picker("Tema", selection: $appearance) {
+                                Text("Sistema").tag("system")
+                                Text("Claro").tag("light")
+                                Text("Escuro").tag("dark")
+                            }
+                            .pickerStyle(.segmented)
+                            .tint(AppTheme.accent)
+                            .accessibilityLabel("Tema do aplicativo")
+                        }
+
+                        settingsCard("SEGURANÇA E INTEGRIDADE", subtitle: "Verificação dos recursos essenciais", icon: "checkmark.shield.fill") {
+                            HStack(spacing: 10) {
+                                Image(systemName: integrityVerified ? "checkmark.seal.fill" : "exclamationmark.triangle.fill")
+                                    .foregroundStyle(integrityVerified ? AppTheme.rgbGreen : AppTheme.rgbRed)
+                                VStack(alignment: .leading, spacing: 3) {
+                                    Text(integrityVerified ? "Recursos verificados" : "Verificação pendente")
+                                        .font(.system(size: 12, weight: .semibold))
+                                    Text("Bundle ID, estrutura e assinaturas de recursos são conferidos no início.")
+                                        .font(.system(size: 10))
+                                        .foregroundStyle(.secondary)
+                                }
+                                Spacer()
+                            }
+                        }
+
                         settingsCard("VERSÕES COMPATÍVEIS", subtitle: "Versões do iOS verificadas", icon: "checkmark.shield.fill") {
                             settingRow("iOS 16", value: ExploitSupportPolicy.verifiedIOS16Range)
                             settingRow("iOS 17", value: ExploitSupportPolicy.verifiedIOS17Range)
@@ -86,8 +114,8 @@ struct SettingsView: View {
             }
         }
         .tint(AppTheme.accent)
-        .preferredColorScheme(.dark)
         .onReceive(timer) { now = $0 }
+        .onAppear { integrityVerified = AntiCrack.verifyBundleIntegrity() }
         .task {
             while !Task.isCancelled {
                 await licenseManager.refreshActiveCount()

@@ -24,6 +24,7 @@ struct ContentView: View {
     @State private var appliedPatchIDs: Set<UUID> = []
     @State private var showManualRestorePrompt = false
     @State private var selectedMainPage = 0
+    @State private var selectedPatchDetails: PatchDetailsData?
 
     enum GameTab: String, CaseIterable {
         case cache = "CACHE"
@@ -327,9 +328,19 @@ struct ContentView: View {
         }
         .animation(.easeInOut(duration: 0.22), value: selectedMainPage)
         .animation(.easeInOut(duration: 0.18), value: isMenuExpanded)
-        .preferredColorScheme(.dark)
         .sheet(isPresented: $showSettings) {
             SettingsView()
+        }
+        .sheet(item: $selectedPatchDetails) { details in
+            PatchDetailsView(
+                name: details.name,
+                target: details.target,
+                status: details.status,
+                metadata: details.metadata,
+                packageName: details.packageName,
+                source: details.source,
+                isProtected: details.isProtected
+            )
         }
         .sheet(item: $patchStore.passwordRequest, onDismiss: patchStore.cancelUnlock) { _ in
             PatchUnlockPrompt(store: patchStore)
@@ -429,7 +440,19 @@ struct ContentView: View {
                             isBusy: onlineCatalog.activeID != nil || patchOperationBusy,
                             isAvailable: false,
                             isDownloadable: true,
-                            previewURL: remote.img
+                            previewURL: remote.img,
+                            metadata: "Catálogo remoto\(remote.rank.map { " · #\($0)" } ?? "")",
+                            detailsAction: {
+                                selectedPatchDetails = PatchDetailsData(
+                                    name: remote.name,
+                                    target: selectedGameTab.displayTitle,
+                                    status: onlineCatalog.isEnabled(remote) ? "Ativo" : "Disponível para baixar",
+                                    metadata: "Catálogo remoto",
+                                    packageName: remote.localFilename,
+                                    source: URL(string: remote.url)?.host ?? "PatchHub",
+                                    isProtected: true
+                                )
+                            }
                         ) {
                             // Download/activation/restoration is initiated only by this tap.
                             onlineCatalog.toggle(remote) { message in
@@ -444,7 +467,7 @@ struct ContentView: View {
             if patchOperationBusy || patchMessage != "PRONTO — TOQUE EM UM PATCH" {
                 StatusMessageBar(
                     message: patchMessage,
-                    isSuccess: patchMessage.localizedCaseInsensitiveContains("successful"),
+                    isSuccess: isSuccessMessage(patchMessage),
                     isBusy: patchOperationBusy
                 )
             }
@@ -491,7 +514,19 @@ struct ContentView: View {
             isPending: isPending,
             isBusy: busy,
             isAvailable: enabled || isPackageAvailable(item),
-            previewURL: remote?.img
+            previewURL: remote?.img,
+            metadata: item.isLocked ? "Protegido · desbloqueio necessário" : "Schema \(item.summary.schemaVersion) · pacote verificado",
+            detailsAction: {
+                selectedPatchDetails = PatchDetailsData(
+                    name: remote?.name ?? item.displayName,
+                    target: selectedGameTab.displayTitle,
+                    status: enabled ? "Ativo" : (item.isLocked ? "Protegido" : "Pronto"),
+                    metadata: "Schema \(item.summary.schemaVersion)",
+                    packageName: item.packageURL.lastPathComponent,
+                    source: remote == nil ? "Armazenamento protegido" : (URL(string: remote?.url ?? "")?.host ?? "PatchHub"),
+                    isProtected: item.summary.isPasswordProtected || !item.isLocked
+                )
+            }
         ) {
             if item.isLocked && !isPatchApplied(item) {
                 patchStore.requestUnlock(for: item)
@@ -949,8 +984,22 @@ struct ContentView: View {
             log("launch: \(scheme) success=\(success)")
         }
     }
+    private func isSuccessMessage(_ message: String) -> Bool {
+        let markers = ["ATIVADO", "DESATIVADO", "RESTAURADOS", "RESTAURAÇÃO CONCLUÍDA", "COMPLETADO", "CONECTADO", "PRONTO", "IMPORTADO", "CRIADO", "ATUALIZADO", "DESBLOQUEADO"]
+        return markers.contains { message.localizedCaseInsensitiveContains($0) }
+    }
 }
 
+private struct PatchDetailsData: Identifiable {
+    let id = UUID()
+    let name: String
+    let target: String
+    let status: String
+    let metadata: String
+    let packageName: String
+    let source: String
+    let isProtected: Bool
+}
 // Os callbacks permanecem sem efeito para preservar a sequência dos handlers.
 private enum PatchAudioFeedback {
     static func bypassActivated() {}

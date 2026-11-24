@@ -31,7 +31,7 @@ struct PatchUnlockPrompt: View {
             .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Cancelar") { store.clearUnlockError(); store.cancelUnlock() } } }
             .onAppear { fieldFocused = true }
         }
-        .preferredColorScheme(.dark).presentationDetents([.medium])
+        .presentationDetents([.medium])
     }
     private func submit() { guard !password.isEmpty else { return }; store.unlock(password: password) }
 }

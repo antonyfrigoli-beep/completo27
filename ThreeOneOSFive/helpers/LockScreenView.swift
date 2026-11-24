@@ -34,6 +34,5 @@ struct LockScreenView: View {
                 .padding(.top, 8)
             }
         }
-        .preferredColorScheme(.dark)
     }
 }

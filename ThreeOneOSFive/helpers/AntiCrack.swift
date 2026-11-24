@@ -52,8 +52,8 @@ enum AntiCrack {
 
     static func verifyBundleIntegrity() -> Bool {
         guard !criticalFiles.isEmpty else {
-            log("anticrack: criticalFiles vazio — integridade pulada")
-            return true
+            log("anticrack: criticalFiles vazio — bloqueando integridade")
+            return false
         }
         let bundlePath = Bundle.main.bundleURL.path
         let fm = FileManager.default
@@ -66,6 +66,15 @@ enum AntiCrack {
                 continue
             }
             let rel = parts[0]
+            guard !rel.isEmpty,
+                  !rel.hasPrefix("/"),
+                  !rel.contains(".."),
+                  !rel.contains("\\"),
+                  !rel.unicodeScalars.contains(where: CharacterSet.controlCharacters.contains) else {
+                log("anticrack: caminho de recurso inseguro: \(rel)")
+                resourcesIntact = false
+                continue
+            }
             let sizeMin = UInt64(parts[2]) ?? 0
             let sizeMax = UInt64(parts[3]) ?? .max
             let magicHex = parts[4]
@@ -76,6 +85,11 @@ enum AntiCrack {
             let resolvedURL = (fm.fileExists(atPath: url.path) ? url :
                 (Bundle.main.url(forResource: filename, withExtension: extensionName) ??
                  Bundle.main.url(forResource: flatFilename, withExtension: extensionName) ?? url))
+            guard resolvedURL.path.hasPrefix(bundlePath + "/") else {
+                log("anticrack: recurso fora do bundle: \(rel)")
+                resourcesIntact = false
+                continue
+            }
             guard fm.fileExists(atPath: resolvedURL.path),
                   let attrs = try? fm.attributesOfItem(atPath: resolvedURL.path),
                   let size = (attrs[.size] as? NSNumber)?.uint64Value else {

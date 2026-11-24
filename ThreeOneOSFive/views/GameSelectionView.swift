@@ -90,7 +90,6 @@ struct GameSelectionView: View {
                 .frame(maxWidth: .infinity)
             }
         }
-        .preferredColorScheme(.dark)
     }
 }
 

@@ -36,7 +36,6 @@ struct TutorialsView: View {
         .fullScreenCover(item: $selectedTutorial) { tutorial in
             TutorialPlayerView(item: tutorial)
         }
-        .preferredColorScheme(.dark)
     }
 
 }
@@ -132,6 +131,5 @@ private struct TutorialPlayerView: View {
             player = AVPlayer(url: url)
             player?.play()
         }
-        .preferredColorScheme(.dark)
     }
 }

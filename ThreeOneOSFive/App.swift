@@ -7,7 +7,8 @@ struct ThreeOneOSFiveApp: App {
     @StateObject private var licenseManager = LicenseManager()
     @StateObject private var patchDraftCoordinator = PatchDraftCoordinator()
     @StateObject private var fileOperationCoordinator = FileOperationCoordinator();
-    @AppStorage(AppLanguage.storageKey) private var languageCode = AppLanguage.english.rawValue
+	@AppStorage(AppLanguage.storageKey) private var languageCode = AppLanguage.english.rawValue
+	@AppStorage("filza.appearance") private var appearance = "system"
     @State private var updateOffer: AppUpdateChecker.Offer?
     @State private var calculatorUnlocked = false
     @State private var hasAuthenticated = false
@@ -129,9 +130,17 @@ struct ThreeOneOSFiveApp: App {
                 guard url.scheme?.lowercased() != "airliftreturn" else { return }
                 patchDraftCoordinator.presentImport(url)
             }
-            .preferredColorScheme(.dark)
+	            .preferredColorScheme(preferredColorScheme)
         }
     }
+
+	private var preferredColorScheme: ColorScheme? {
+		switch appearance {
+		case "light": return .light
+		case "dark": return .dark
+		default: return nil
+		}
+	}
 }
 
 private struct SecurityBlockedView: View {
@@ -147,7 +156,7 @@ private struct SecurityBlockedView: View {
                 .foregroundStyle(.secondary)
         }
         .padding(28)
-        .preferredColorScheme(.dark)
+		.accessibilityElement(children: .combine)
     }
 }
 

@@ -73,7 +73,6 @@ struct CalculadoraIPhoneView: View {
                     .transition(.asymmetric(insertion: .scale(scale: 0.96, anchor: .topTrailing).combined(with: .opacity), removal: .opacity))
             }
         }
-        .preferredColorScheme(.dark)
         .sheet(isPresented: $showHistory) {
             historySheet
                 .presentationDetents([.medium, .large])
@@ -195,7 +194,6 @@ struct CalculadoraIPhoneView: View {
         .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 25, style: .continuous))
         .overlay(RoundedRectangle(cornerRadius: 25, style: .continuous).stroke(Color.white.opacity(0.12), lineWidth: 0.8))
         .shadow(color: .black.opacity(0.45), radius: 24, y: 12)
-        .environment(\.colorScheme, .dark)
     }
 
     private func modeRow(_ selectedMode: CalculatorMode, title: String, icon: String) -> some View {
