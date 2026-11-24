@@ -90,15 +90,10 @@ struct TutorialsView: View {
     @State private var selectedTutorial: TutorialItem?
     private var tutorials: [TutorialItem] {
         let remoteItems = remote.items.compactMap { item -> TutorialItem? in guard let url = remote.fileURL(for: item) else { return nil }; return TutorialItem(id: item.id, title: item.title, subtitle: item.subtitle, localURL: url, thumbnail: nil, icon: "play.rectangle.fill") }
-        if !remoteItems.isEmpty { return remoteItems }
-        return [
-            TutorialItem(id: "others", title: "Erro em Outros", subtitle: "Como resolver", localURL: Bundle.main.url(forResource: "tutorial_error_others", withExtension: "mov", subdirectory: "Tutorials"), thumbnail: "tutorial_error_banner", icon: "exclamationmark.triangle.fill"),
-            TutorialItem(id: "ffth-ffmax", title: "FFTH e FFMax", subtitle: "Como jogar", localURL: Bundle.main.url(forResource: "tutorial_ffth_ffmax", withExtension: "mov", subdirectory: "Tutorials"), thumbnail: "tutorial_ffth_banner", icon: "flame.fill"),
-            TutorialItem(id: "ap", title: "Opções AP", subtitle: "Como usar", localURL: Bundle.main.url(forResource: "tutorial_ap", withExtension: "mov", subdirectory: "Tutorials"), thumbnail: "tutorial_ap_banner", icon: "shield.lefthalf.filled")
-        ]
+        return remoteItems
     }
     var body: some View {
-        ScrollView(showsIndicators: false) { VStack(alignment: .leading, spacing: 16) { Text("Escolha um dos guias para assistir.").font(.system(size: 12, weight: .medium, design: .rounded)).foregroundStyle(.white.opacity(0.62)); LazyVGrid(columns: [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)], spacing: 12) { ForEach(tutorials) { tutorial in TutorialCard(item: tutorial) { selectedTutorial = tutorial } } }; Text("Toque em um cartão para assistir em tela cheia.").font(.system(size: 11, weight: .medium, design: .rounded)).foregroundStyle(.white.opacity(0.48)).frame(maxWidth: .infinity, alignment: .center) }.padding(.horizontal, 16).padding(.top, 14).padding(.bottom, 24) }
+        ScrollView(showsIndicators: false) { VStack(alignment: .leading, spacing: 16) { Text(tutorials.isEmpty ? "Nenhum tutorial publicado no momento." : "Escolha um dos guias para assistir.").font(.system(size: 12, weight: .medium, design: .rounded)).foregroundStyle(.white.opacity(0.62)); if tutorials.isEmpty { Text("Novos vídeos aparecerão aqui assim que forem publicados no PatchHub.").font(.system(size: 12, weight: .medium, design: .rounded)).foregroundStyle(.white.opacity(0.48)).frame(maxWidth: .infinity, minHeight: 150).multilineTextAlignment(.center) } else { LazyVGrid(columns: [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)], spacing: 12) { ForEach(tutorials) { tutorial in TutorialCard(item: tutorial) { selectedTutorial = tutorial } } }; Text("Toque em um cartão para assistir em tela cheia.").font(.system(size: 11, weight: .medium, design: .rounded)).foregroundStyle(.white.opacity(0.48)).frame(maxWidth: .infinity, alignment: .center) } }.padding(.horizontal, 16).padding(.top, 14).padding(.bottom, 24) }
         .fullScreenCover(item: $selectedTutorial) { TutorialPlayerView(item: $0) }
         .task { await remote.refresh() }
     }

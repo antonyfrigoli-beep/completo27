@@ -15,9 +15,6 @@ ROOT = Path(__file__).resolve().parents[1]
 ANTICRACK = ROOT / "ThreeOneOSFive/helpers/AntiCrack.swift"
 PNG_SIGNATURE = b"\x89PNG\r\n\x1a\n"
 APPROVED_TUTORIAL_SHA256 = {
-    "Tutorials/tutorial_error_others.mov": "d040ecca2f28bc5ab0557b5cf0431df71e77588cc251410ef84df3140259dc6a",
-    "Tutorials/tutorial_ffth_ffmax.mov": "5d575f121beb72dd5c02fa7714e551219d7884827a9e6b3611e316f6977f24b3",
-    "Tutorials/tutorial_ap.mov": "c9bbac6eac8410723e7dca84d6eba7e887cbe1dc3e2c31bcc19c91f9724b7441",
     "Tutorials/tutorial_error_banner.jpg": "66acbea6c9a19551b0e19ca4f5e02b8c6e769a29240601b1312d44be2f9711fd",
     "Tutorials/tutorial_ffth_banner.jpg": "2b702af53bcf03d29e46fcee4fbea43283802ec27bdbf64767138bb2ce30693f",
     "Tutorials/tutorial_ap_banner.jpg": "c444140ce5def6629db293bcf724ffdeaa7b0a5a78b33b0b3d728c9c0d479f1a",

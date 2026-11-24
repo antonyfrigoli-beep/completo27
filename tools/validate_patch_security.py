@@ -175,11 +175,11 @@ def main() -> int:
             and 'recoverExpiredTemporaryPatchIfNeeded' not in view,
             "all patch activation and restoration is manual; old automatic mode/timers are disabled")
     tutorials = read("ThreeOneOSFive/TutorialsView.swift")
-    require('title: "Erro em Outros"' in tutorials
-            and 'title: "FFTH e FFMax"' in tutorials
-            and 'title: "Opções AP"' in tutorials
-            and 'VideoPlayer(player: player)' in tutorials,
-            "Portuguese tutorial page provides the three original videos and full-screen player")
+    require('return remoteItems' in tutorials
+            and 'Nenhum tutorial publicado no momento.' in tutorials
+            and 'VideoPlayer(player: player)' in tutorials
+            and 'tutorial_error_others' not in tutorials,
+            "tutorial page is empty until new remote videos are published")
     settings = read("ThreeOneOSFive/views/SettingsView.swift")
     require('AppLogo' not in settings
             and 'FILZA EXTERNAL BYPASS' not in settings
@@ -264,18 +264,18 @@ def main() -> int:
             and 'recursos críticos alterados — bloqueando interface protegida' in anti,
             "a changed Bundle ID or critical resource is blocked at startup")
     tutorial_specs = [
-        "Tutorials/tutorial_error_others.mov|mov|1000|10000000|66747970",
-        "Tutorials/tutorial_ffth_ffmax.mov|mov|1000|10000000|66747970",
-        "Tutorials/tutorial_ap.mov|mov|1000|10000000|66747970",
         "Tutorials/tutorial_error_banner.jpg|jpg|1000|2000000|ffd8ff",
         "Tutorials/tutorial_ffth_banner.jpg|jpg|1000|2000000|ffd8ff",
         "Tutorials/tutorial_ap_banner.jpg|jpg|1000|2000000|ffd8ff",
     ]
+    tutorials_view = read("ThreeOneOSFive/TutorialsView.swift")
     require(all(spec in anti for spec in tutorial_specs)
             and 'FileHandle(forReadingFrom: resolvedURL)' in anti
             and 'read(upToCount: signature.count)' in anti
-            and 'APPROVED_TUTORIAL_SHA256' in resource_tests,
-            "AntiCrack recognizes tutorial MOV/JPG signatures and audits approved media without loading whole videos at launch")
+            and 'APPROVED_TUTORIAL_SHA256' in resource_tests
+            and 'return remoteItems' in tutorials_view
+            and 'tutorial_error_others' not in tutorials_view,
+            "tutorial tab contains no bundled videos and only renders validated remote media")
     require('ftyp' in resource_tests and 'offset = 4' in resource_tests,
             "resource validator includes MOV/MP4/M4V ftyp offset-4 test cases")
 

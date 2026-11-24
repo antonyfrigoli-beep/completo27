@@ -16,9 +16,6 @@ enum AntiCrack {
     static let criticalFiles: [String] = [
         "ActivationBackground.png|png|2000000|5000000|89504e470d0a1a0a",
         "REALExternalMark.png|png|100000|5000000|89504e470d0a1a0a",
-        "Tutorials/tutorial_error_others.mov|mov|1000|10000000|66747970",
-        "Tutorials/tutorial_ffth_ffmax.mov|mov|1000|10000000|66747970",
-        "Tutorials/tutorial_ap.mov|mov|1000|10000000|66747970",
         "Tutorials/tutorial_error_banner.jpg|jpg|1000|2000000|ffd8ff",
         "Tutorials/tutorial_ffth_banner.jpg|jpg|1000|2000000|ffd8ff",
         "Tutorials/tutorial_ap_banner.jpg|jpg|1000|2000000|ffd8ff",
