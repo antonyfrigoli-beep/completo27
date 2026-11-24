@@ -83,6 +83,20 @@ struct PatchPasswordRequest: Identifiable {
 }
 
 enum PatchProjectLibrary {
+    /// Remove all remote patch material and related session state. This is
+    /// intentionally fail-closed: an invalid/expired license must not leave a
+    /// usable package or receipt behind for a later screen transition.
+    static func purgeRemoteSession(fileManager: FileManager = .default) {
+        let support = fileManager.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+        let session = support.appendingPathComponent(".fp-session", isDirectory: true)
+        try? fileManager.removeItem(at: session)
+        try? fileManager.removeItem(at: fileManager.temporaryDirectory.appendingPathComponent(".fp-session", isDirectory: true))
+        try? fileManager.removeItem(at: support.appendingPathComponent("PatchProjects", isDirectory: true))
+        try? fileManager.removeItem(at: fileManager.urls(for: .documentDirectory, in: .userDomainMask)[0].appendingPathComponent("FilzaFiles", isDirectory: true))
+        UserDefaults.standard.removeObject(forKey: "com.hyperregedit.appliedPatchIDs")
+        UserDefaults.standard.removeObject(forKey: "onlineCatalogLegacyPatchMigration.v2")
+    }
+
     static func packageRootURL(fileManager: FileManager = .default) throws -> URL {
         let support = try fileManager.url(
             for: .applicationSupportDirectory,

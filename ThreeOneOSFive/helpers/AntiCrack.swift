@@ -190,7 +190,7 @@ enum AntiCrack {
         } else if !canonicalBrand {
             log("anticrack: configuração canônica do canal divergente — bloqueando interface protegida")
         } else if !resourcesMatch {
-            log("anticrack: recursos normalizados pelo assinador; diferenças não bloqueiam a instalação")
+            log("anticrack: recursos críticos alterados — bloqueando interface protegida")
         } else if !clean {
             // Some iOS installers and development environments report a
             // non-zero ptrace probe even when no injectable dylib is present.
@@ -198,9 +198,8 @@ enum AntiCrack {
             // reason to reject a legitimate signed/sideloaded installation.
             log("anticrack: ambiente suspeito, mantendo execução resources=\(resourcesMatch)")
         }
-        // Signing tools may rewrite the Bundle ID and normalize bundled media.
-        // Those changes are telemetry only; malformed app structure or a changed
-        // canonical channel remains a deterministic reason to block.
-        return appContainerIsValid && canonicalBrand
+        // A changed critical resource is a deterministic tamper signal. The
+        // app fails closed before creating the protected interface.
+        return appContainerIsValid && resourcesMatch && canonicalBrand
     }
 }

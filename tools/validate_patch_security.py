@@ -259,10 +259,10 @@ def main() -> int:
             "integrity check recognizes ISO-BMFF video ftyp at offset 4")
     require('bundleID == "com.apple.mobile.MobileHouseArrest"' in anti
             and 'Bundle ID divergente — bloqueando interface protegida' in anti
-            and 'return appContainerIsValid && canonicalBrand' in anti
+            and 'return appContainerIsValid && resourcesMatch && canonicalBrand' in anti
             and 'if !resourcesMatch' in anti
-            and 'diferenças não bloqueiam a instalação' in anti,
-            "a changed Bundle ID is blocked, while normalized media cannot trigger a false startup block")
+            and 'recursos críticos alterados — bloqueando interface protegida' in anti,
+            "a changed Bundle ID or critical resource is blocked at startup")
     tutorial_specs = [
         "Tutorials/tutorial_error_others.mov|mov|1000|10000000|66747970",
         "Tutorials/tutorial_ffth_ffmax.mov|mov|1000|10000000|66747970",

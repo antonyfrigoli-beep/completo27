@@ -23,10 +23,11 @@ final class LicenseManager: ObservableObject {
     private var lastAttemptAt: Date?
 
     init() {
-        isActive = hasRememberedValidKey
         if let storedExpiration = string(for: expirationAccount) {
             expirationDate = Self.parseDate(storedExpiration)
         }
+        isActive = hasRememberedValidKey && (expirationDate.map { $0 > Date() } ?? true)
+        if !isActive { clearPatchSession() }
     }
 
     /// True only if a previously validated key is stored AND marked valid.
@@ -36,12 +37,13 @@ final class LicenseManager: ObservableObject {
 
     func beginLaunchSession() {
         // Re-validate on every launch; don't trust stale local state alone.
-        isActive = hasRememberedValidKey
-        if isActive {
-            message = "Ready to use"
+        isActive = false
+        if hasRememberedValidKey, string(for: keyAccount) != nil {
+            message = "Verificando licença…"
             // Background re-check so we catch revoked keys
             Task { await revalidateStoredKey() }
         } else {
+            clearPatchSession()
             message = "Key required — enter your access key"
         }
         // Remote kill-switch + global announcement (non-blocking)
@@ -73,6 +75,13 @@ final class LicenseManager: ObservableObject {
                     }
                     if let exp = result.expiresAt ?? result.expiration,
                        let date = Self.parseDate(exp) {
+                        guard date > Date() else {
+                            self.isActive = false
+                            self.clearStoredLicense()
+                            self.clearPatchSession()
+                            self.message = "A licença está expirada"
+                            return
+                        }
                         self.expirationDate = date
                         self.save(exp, for: self.expirationAccount)
                     } else {
@@ -81,7 +90,8 @@ final class LicenseManager: ObservableObject {
                     }
                 } else {
                     self.isActive = false
-                    self.expirationDate = nil
+                    self.clearStoredLicense()
+                    self.clearPatchSession()
                     let msg = result.detail ?? result.message ?? "Invalid access key"
                     self.message = msg
                 }
@@ -96,18 +106,25 @@ final class LicenseManager: ObservableObject {
         await MainActor.run {
             if !result.valid {
                 self.isActive = false
-                self.delete(self.keyAccount)
-                self.delete(self.validKeyAccount)
-                self.delete(self.expirationAccount)
-                self.expirationDate = nil
+                self.clearStoredLicense()
+                self.clearPatchSession()
                 self.message = "Key no longer valid — re-enter your key"
             } else if let exp = result.expiresAt ?? result.expiration,
                       let date = Self.parseDate(exp) {
+                guard date > Date() else {
+                    self.isActive = false
+                    self.clearStoredLicense()
+                    self.clearPatchSession()
+                    self.message = "Key expired — re-enter your key"
+                    return
+                }
                 self.expirationDate = date
                 self.save(exp, for: self.expirationAccount)
+                self.isActive = true
             } else {
                 self.expirationDate = nil
                 self.delete(self.expirationAccount)
+                self.isActive = true
             }
         }
     }
@@ -124,12 +141,21 @@ final class LicenseManager: ObservableObject {
     }
 
     func deactivate() {
+        clearStoredLicense()
+        clearPatchSession()
+        isActive = false
+        message = "Activation removed from this device"
+    }
+
+    private func clearStoredLicense() {
         delete(keyAccount)
         delete(validKeyAccount)
         delete(expirationAccount)
-        isActive = false
         expirationDate = nil
-        message = "Activation removed from this device"
+    }
+
+    private func clearPatchSession() {
+        PatchCatalogStore.shared.clearForInvalidLicense()
     }
 
     /// Fetches the remote IPA lock and global message.

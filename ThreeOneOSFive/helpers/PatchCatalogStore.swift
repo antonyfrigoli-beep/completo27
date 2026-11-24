@@ -183,6 +183,19 @@ final class PatchCatalogStore: ObservableObject {
         enabledIDs.removeAll()
     }
 
+    /// Fail closed when the license is invalid or expired.
+    func clearForInvalidLicense() {
+        for task in inFlightDownloads.values { task.cancel() }
+        inFlightDownloads.removeAll()
+        items.removeAll()
+        readyFilenames.removeAll()
+        enabledIDs.removeAll()
+        activeID = nil
+        downloadError = "A licença não está válida. Os patches remotos foram removidos."
+        PatchProjectLibrary.purgeRemoteSession()
+        PatchProjectStore.shared.reload()
+    }
+
     func syncEnabledStates() {
         let catalog = items
         Task { [weak self] in
