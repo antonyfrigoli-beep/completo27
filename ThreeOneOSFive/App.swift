@@ -78,14 +78,12 @@ struct ThreeOneOSFiveApp: App {
                 .environment(\.locale, language.locale)
             .alert(item: $updateOffer) { offer in
                 Alert(
-                    title: Text(language.text("update.title")),
-                    message: Text(language.text("update.message", offer.version)),
-                    primaryButton: .default(Text(language.text("update.agree"))) {
+                    title: Text(offer.title),
+                    message: Text("\(offer.message)\n\nVersão alvo: \(offer.version) · build \(offer.build)"),
+                    primaryButton: .default(Text("Baixar atualização")) {
                         UIApplication.shared.open(offer.url)
                     },
-                    secondaryButton: .cancel(Text(language.text("update.dismiss"))) {
-                        AppUpdateChecker.dismiss(version: offer.version)
-                    }
+                    secondaryButton: .cancel(Text("Agora não"))
                 )
             }
             .alert("Aviso global", isPresented: Binding(
@@ -104,6 +102,13 @@ struct ThreeOneOSFiveApp: App {
                 appState.detectSupport()
                 checkForUpdate()
             }
+            .task {
+                while !Task.isCancelled {
+                    try? await Task.sleep(nanoseconds: 300_000_000_000)
+                    guard !Task.isCancelled else { continue }
+                    checkForUpdate()
+                }
+            }
             .onChange(of: licenseManager.isActive) { isActive in
                 if !isActive {
                     hasAuthenticated = false
@@ -121,6 +126,7 @@ struct ThreeOneOSFiveApp: App {
                     }
                     licenseManager.beginLaunchSession()
                     appState.detectSupport()
+                    checkForUpdate()
                     // ContentView owns the foreground reconnect so the app
                     // does not start a second handshake in parallel with the
                     // screen-level lifecycle callback.

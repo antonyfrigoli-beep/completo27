@@ -129,58 +129,52 @@ enum AppPaths {
 }
 
 enum AppUpdateChecker {
-    static let dismissedVersionKey = "update.dismissedVersion"
-    static let apiURL = URL(string: "https://api.github.com/repos/YangJiiii/OGIOS/releases/latest")!
-    static let fallbackURL = URL(string: "https://github.com/YangJiiii/OGIOS/releases/latest")!
+    static let apiURL = FilzaLicense.patchHubBaseURL.appendingPathComponent("api/mobile/updates")
 
     struct Offer: Identifiable {
         let id = UUID()
         let version: String
+        let build: Int
+        let title: String
+        let message: String
         let url: URL
     }
 
-    static var currentVersion: String {
-        Bundle.main.object(forInfoDictionaryKey: "AppReleaseDisplayVersion") as? String
-            ?? Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String
-            ?? "0"
-    }
-
-    static func dismiss(version: String) {
-        UserDefaults.standard.set(version, forKey: dismissedVersionKey)
+    static var currentBuild: Int {
+        Int(Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "0") ?? 0
     }
 
     static func check() async -> Offer? {
         var request = URLRequest(url: apiURL)
         request.timeoutInterval = 15
-        request.setValue("FilzaBypass", forHTTPHeaderField: "User-Agent")
-        request.setValue("application/vnd.github+json", forHTTPHeaderField: "Accept")
+        request.setValue("application/json", forHTTPHeaderField: "Accept")
         do {
             let (data, response) = try await URLSession.shared.data(for: request)
             guard let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode) else {
                 return nil
             }
-            let decoded = try JSONDecoder().decode(GitHubRelease.self, from: data)
-            let remote = normalize(decoded.tagName)
-            guard !remote.isEmpty,
-                  isNewer(remote, than: currentVersion),
-                  UserDefaults.standard.string(forKey: dismissedVersionKey) != remote else {
+            let decoded = try JSONDecoder().decode(Response.self, from: data)
+            guard let update = decoded.update,
+                  update.buildNumber > currentBuild,
+                  let url = URL(string: update.downloadURL),
+                  url.scheme?.lowercased() == "https",
+                  let host = url.host?.lowercased(),
+                  host == "mediafire.com" || host.hasSuffix(".mediafire.com") else {
                 return nil
             }
-            let url = URL(string: decoded.htmlURL) ?? fallbackURL
-            return Offer(version: remote, url: url)
+            return Offer(version: update.version, build: update.buildNumber, title: update.title, message: update.message, url: url)
         } catch {
             return nil
         }
     }
 
-    private struct GitHubRelease: Decodable {
-        let tagName: String
-        let htmlURL: String
-
-        enum CodingKeys: String, CodingKey {
-            case tagName = "tag_name"
-            case htmlURL = "html_url"
-        }
+    private struct Response: Decodable { let update: Update? }
+    private struct Update: Decodable {
+        let version: String
+        let buildNumber: Int
+        let title: String
+        let message: String
+        let downloadURL: String
     }
 
     static func normalize(_ version: String) -> String {
