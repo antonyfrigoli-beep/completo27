@@ -282,8 +282,8 @@ def main() -> int:
     icon_path = APP / "Assets.xcassets/AppIcon.appiconset/AppIcon-1024.png"
     mark_path = APP / "REALExternalMark.png"
     require(icon_path.is_file() and mark_path.is_file()
-            and icon_path.read_bytes() == mark_path.read_bytes(),
-            "Filza shield artwork replaces the Tommy icon and activation mark consistently")
+            and icon_path.read_bytes() != mark_path.read_bytes(),
+            "Calculadora app icon is separate from the internal activation artwork")
     print("Security source audit completed.")
     return 0
 
