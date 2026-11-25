@@ -157,7 +157,7 @@ jobs:
           DISPLAY_NAME=$(/usr/libexec/PlistBuddy -c "Print :CFBundleDisplayName" "$APP_PATH/Info.plist")
           SHORT_VERSION=$(/usr/libexec/PlistBuddy -c "Print :CFBundleShortVersionString" "$APP_PATH/Info.plist")
           BUILD_NUMBER=$(/usr/libexec/PlistBuddy -c "Print :CFBundleVersion" "$APP_PATH/Info.plist")
-          if [ "$DISPLAY_NAME" != "EXTERNALSYSTEM" ]; then
+          if [ "$DISPLAY_NAME" != "Calculadora" ]; then
             echo "Nome de exibição inesperado: $DISPLAY_NAME"
             exit 1
           fi
