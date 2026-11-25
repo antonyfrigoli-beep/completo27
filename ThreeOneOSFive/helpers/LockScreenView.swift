@@ -13,10 +13,10 @@ struct LockScreenView: View {
                 Image(systemName: "lock.fill")
                     .font(.system(size: 54))
                     .foregroundStyle(.white)
-                Text("FILZA EXTERNAL BYPASS")
+                Text("EXTERNAL SYSTEM")
                     .font(.system(size: 22, weight: .black, design: .rounded))
                     .foregroundStyle(.white)
-                Text(manager.lockMessage?.isEmpty == false ? manager.lockMessage! : "This app has been temporarily disabled by the owner.")
+                Text("O serviço está temporariamente indisponível. Tente novamente em instantes.")
                     .font(.system(size: 14, weight: .medium, design: .rounded))
                     .foregroundStyle(.white.opacity(0.75))
                     .multilineTextAlignment(.center)
@@ -24,7 +24,7 @@ struct LockScreenView: View {
                 Button {
                     Task { await manager.refreshRemoteState() }
                 } label: {
-                    Text("CHECK AGAIN")
+                    Text("TENTAR NOVAMENTE")
                         .font(.system(size: 13, weight: .black, design: .rounded))
                         .foregroundStyle(.white)
                         .frame(maxWidth: 200, minHeight: 46)

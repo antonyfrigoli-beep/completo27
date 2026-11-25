@@ -217,6 +217,12 @@ def main() -> int:
     ]
     require(not any(text in activation for text in spanish_activation),
             "activation screen contains none of the previous Spanish labels")
+    lock_screen = read("ThreeOneOSFive/helpers/LockScreenView.swift")
+    require('manager.refreshRemoteState()' in lock_screen
+            and 'O serviço está temporariamente indisponível.' in lock_screen
+            and 'manager.lockMessage' not in lock_screen
+            and 'TENTAR NOVAMENTE' in lock_screen,
+            "remote lock remains enforced while its message is neutralized locally")
     app_entry = read("ThreeOneOSFive/App.swift")
     flow_markers = [
         "CalculadoraIPhoneView {",
