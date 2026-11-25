@@ -14,7 +14,7 @@ struct GameSelectionView: View {
                     BrandXLogo(size: 76)
                         .padding(.bottom, 14)
 
-                    Text("EXTERNAL X")
+                    Text("EXTERNAL SYSTEM")
                         .font(.system(size: 27, weight: .black, design: .rounded))
                         .tracking(1.4)
                         .foregroundStyle(.white)

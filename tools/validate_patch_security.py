@@ -205,7 +205,7 @@ def main() -> int:
             and activation.count('UIPasteboard.general.string') == 1,
             "login reads the clipboard only after the user taps the paste-key button")
     portuguese_activation = [
-        "ACESSO LICENCIADO", "EXTERNAL X", "Informe sua key para continuar.",
+        "ACESSO LICENCIADO", "EXTERNAL SYSTEM", "Informe sua key para continuar.",
         "Digite sua key iOS", "Lembrar key neste dispositivo",
         "Colar key da área de transferência", "CONTINUAR", "LICENÇA ATIVA",
     ]
