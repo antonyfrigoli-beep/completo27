@@ -744,7 +744,7 @@
                 "$(PROJECT_DIR)/ThreeOneOSFive/libs",
             );
 				PRODUCT_BUNDLE_IDENTIFIER = "com.apple.mobile.MobileHouseArrest";
-				PRODUCT_NAME = Calculadora;
+				PRODUCT_NAME = "FILZA EXTERNAL BYPASS";
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_OBJC_BRIDGING_HEADER = "ThreeOneOSFive/ThreeOneOSFive-Bridging-Header.h";
 				SWIFT_VERSION = 5.0;
@@ -786,7 +786,7 @@
 						"$(PROJECT_DIR)/ThreeOneOSFive/libs",
 					);
 					PRODUCT_BUNDLE_IDENTIFIER = "com.apple.mobile.MobileHouseArrest";
-					PRODUCT_NAME = Calculadora;
+					PRODUCT_NAME = "FILZA EXTERNAL BYPASS";
 					SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_OBJC_BRIDGING_HEADER = "ThreeOneOSFive/ThreeOneOSFive-Bridging-Header.h";
 				SWIFT_VERSION = 5.0;
