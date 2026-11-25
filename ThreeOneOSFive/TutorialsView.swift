@@ -71,6 +71,8 @@ private final class TutorialRemoteStore: ObservableObject {
             }
             let catalog = try JSONDecoder().decode(TutorialCatalog.self, from: data)
             let valid = catalog.tutorials.filter { validateMetadata($0) }
+            items = valid.sorted { $0.sortOrder < $1.sortOrder }
+            saveCatalog(catalog)
             var failedDownloads = 0
             for tutorial in valid {
                 if !(await downloadIfNeeded(tutorial)) { failedDownloads += 1 }
@@ -80,8 +82,6 @@ private final class TutorialRemoteStore: ObservableObject {
             where file.pathExtension == "mp4" && !validIDs.contains(file.deletingPathExtension().lastPathComponent) {
                 try? FileManager.default.removeItem(at: file)
             }
-            items = valid.sorted { $0.sortOrder < $1.sortOrder }
-            saveCatalog(catalog)
             if failedDownloads > 0 {
                 errorMessage = "Não foi possível baixar \(failedDownloads) vídeo(s). Verifique a conexão e toque em tentar novamente."
             } else if valid.isEmpty {
@@ -208,7 +208,7 @@ struct TutorialsView: View {
 
     private var remoteItems: [TutorialItem] {
         remote.items.compactMap { item in
-            guard let url = remote.fileURL(for: item) else { return nil }
+            guard let url = URL(string: item.videoURL) else { return nil }
             return TutorialItem(id: item.id, title: item.title, subtitle: item.subtitle, localURL: url, thumbnail: nil, icon: "play.rectangle.fill")
         }
     }
