@@ -335,7 +335,10 @@ enum FilzaLicense {
                     url: packageURL,
                     file: file,
                     cat: category.rawValue,
-                    password: o["password"] as? String,
+                    // PatchHub publishes `password`; accept its storage name as
+                    // a compatibility fallback so a VPS with the newer API
+                    // cannot silently drop the automatic unlock credential.
+                    password: (o["password"] as? String) ?? (o["packagePassword"] as? String),
                     extra: o["extra"] as? Bool,
                     rank: o["rank"] as? Int,
                     packageSize: o["packageSize"] as? Int,

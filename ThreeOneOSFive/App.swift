@@ -131,7 +131,7 @@ struct ThreeOneOSFiveApp: App {
                         securityBlocked = true
                         return
                     }
-                    licenseManager.beginLaunchSession()
+                    licenseManager.refreshInForeground()
                     appState.detectSupport()
                     checkForUpdate()
                     // ContentView owns the foreground reconnect so the app

@@ -51,6 +51,16 @@ final class LicenseManager: ObservableObject {
         Task { await refreshActiveCount() }
     }
 
+    /// Revalidates a remembered license after a temporary background transition
+    /// without clearing the current UI session. Calling beginLaunchSession here
+    /// would set isActive=false synchronously and present the login again.
+    func refreshInForeground() {
+        guard hasRememberedValidKey, string(for: keyAccount) != nil else { return }
+        Task { await revalidateStoredKey() }
+        Task { await refreshRemoteState() }
+        Task { await refreshActiveCount() }
+    }
+
     func activate(key: String) {
         let trimmed = key.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty, !isBusy else { return }
