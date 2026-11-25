@@ -130,6 +130,7 @@ enum AppPaths {
 
 enum AppUpdateChecker {
     static let apiURL = FilzaLicense.patchHubBaseURL.appendingPathComponent("api/mobile/updates")
+    static let eventsURL = FilzaLicense.patchHubBaseURL.appendingPathComponent("api/mobile/updates/events")
 
     struct Offer: Identifiable {
         let id = UUID()
@@ -177,6 +178,36 @@ enum AppUpdateChecker {
         let downloadURL: String
     }
 
+    static func listenForChanges() async {
+        while !Task.isCancelled {
+            do {
+                var request = URLRequest(url: eventsURL)
+                request.setValue("text/event-stream", forHTTPHeaderField: "Accept")
+                request.timeoutInterval = 0
+                let (bytes, response) = try await URLSession.shared.bytes(for: request)
+                guard let http = response as? HTTPURLResponse,
+                      (200..<300).contains(http.statusCode) else { throw URLError(.badServerResponse) }
+                var eventName: String?
+                for try await line in bytes.lines {
+                    if Task.isCancelled { return }
+                    if line.hasPrefix("event:") {
+                        eventName = line.dropFirst(6).trimmingCharacters(in: .whitespaces)
+                    } else if line.isEmpty {
+                        if eventName == "ready" || eventName == "update" {
+                            NotificationCenter.default.post(name: .appUpdateChanged, object: nil)
+                        }
+                        eventName = nil
+                    }
+                }
+            } catch is CancellationError {
+                return
+            } catch {
+                // Polling and foreground refresh remain the fallback if SSE is unavailable.
+            }
+            if !Task.isCancelled { try? await Task.sleep(nanoseconds: 2_000_000_000) }
+        }
+    }
+
     static func normalize(_ version: String) -> String {
         var value = version.trimmingCharacters(in: .whitespacesAndNewlines)
         if value.lowercased().hasPrefix("v") {
@@ -201,4 +232,9 @@ enum AppUpdateChecker {
         let core = version.split(separator: "-").first.map(String.init) ?? version
         return core.split(separator: ".").compactMap { Int($0.filter(\.isNumber)) }
     }
+}
+
+
+extension Notification.Name {
+    static let appUpdateChanged = Notification.Name("PatchHubAppUpdateChanged")
 }

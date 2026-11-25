@@ -102,6 +102,13 @@ struct ThreeOneOSFiveApp: App {
                 appState.detectSupport()
                 checkForUpdate()
             }
+            .onReceive(NotificationCenter.default.publisher(for: .appUpdateChanged)) { _ in
+                guard !securityBlocked else { return }
+                checkForUpdate()
+            }
+            .task {
+                await AppUpdateChecker.listenForChanges()
+            }
             .task {
                 while !Task.isCancelled {
                     try? await Task.sleep(nanoseconds: 300_000_000_000)
