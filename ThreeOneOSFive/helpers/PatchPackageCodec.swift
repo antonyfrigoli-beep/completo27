@@ -357,8 +357,13 @@ enum PatchPackageCodec {
         }
         if envelope.isPasswordProtected {
             guard envelope.publicContentKey == nil,
-                  (minimumSchemaVersion...latestWritableSchemaVersion).contains(
-                    envelope.keyAADVersion ?? envelope.schemaVersion
+                  // Packages produced by newer PatchHub encoders may use a
+                  // readable key-AAD version even when this build cannot emit it.
+                  // Version 3 uses the same UUID/version AAD construction below;
+                  // rejecting it here incorrectly reports a valid remote package
+                  // as incomplete before password verification can run.
+                  (minimumSchemaVersion...latestReadableSchemaVersion).contains(
+                      envelope.keyAADVersion ?? envelope.schemaVersion
                   ),
                   envelope.kdfSalt?.count == 16,
                   let iterations = envelope.kdfIterations,

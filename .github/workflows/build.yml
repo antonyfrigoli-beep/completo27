@@ -28,6 +28,9 @@ jobs:
       - name: Testar politica de compatibilidade
         run: python3 tests/run_file_access_tests.py
 
+      - name: Testar compatibilidade com pacote PatchHub protegido schema 3
+        run: python3 tests/run_patch_codec_compatibility.py
+
       - name: Configurar Rust para iOS arm64
         uses: dtolnay/rust-toolchain@stable
         with:
