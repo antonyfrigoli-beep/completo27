@@ -206,11 +206,15 @@ struct TutorialsView: View {
     @StateObject private var remote = TutorialRemoteStore()
     @State private var selectedTutorial: TutorialItem?
 
-    private var tutorials: [TutorialItem] {
+    private var remoteItems: [TutorialItem] {
         remote.items.compactMap { item in
             guard let url = remote.fileURL(for: item) else { return nil }
             return TutorialItem(id: item.id, title: item.title, subtitle: item.subtitle, localURL: url, thumbnail: nil, icon: "play.rectangle.fill")
         }
+    }
+
+    private var tutorials: [TutorialItem] {
+        return remoteItems
     }
 
     var body: some View {
