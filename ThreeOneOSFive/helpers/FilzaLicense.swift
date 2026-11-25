@@ -247,6 +247,9 @@ enum FilzaLicense {
         let password: String?
         let extra: Bool?
         let rank: Int?
+        let packageSize: Int?
+        let packageSha256: String?
+        let isPasswordProtected: Bool?
 
         var remoteFilename: String {
             let name = file.isEmpty ? (URL(string: url)?.lastPathComponent ?? id) : file
@@ -334,7 +337,10 @@ enum FilzaLicense {
                     cat: category.rawValue,
                     password: o["password"] as? String,
                     extra: o["extra"] as? Bool,
-                    rank: o["rank"] as? Int
+                    rank: o["rank"] as? Int,
+                    packageSize: o["packageSize"] as? Int,
+                    packageSha256: o["packageSha256"] as? String,
+                    isPasswordProtected: o["isPasswordProtected"] as? Bool
                 )
             }
             guard arr.isEmpty || !items.isEmpty else {
@@ -383,7 +389,20 @@ enum FilzaLicense {
             }
             let data = try Data(contentsOf: tmp, options: .mappedIfSafe)
             stage = "package validation"
+            if let expectedSize = item.packageSize, data.count != expectedSize {
+                return .failure("O tamanho do pacote recebido não corresponde ao catálogo.")
+            }
+            if let expectedHash = item.packageSha256?.lowercased(), expectedHash.count == 64 {
+                let actualHash = SHA256.hash(data: data).map { String(format: "%02x", $0) }.joined()
+                guard actualHash == expectedHash else {
+                    return .failure("A assinatura SHA-256 do pacote não corresponde ao catálogo.")
+                }
+            }
             let summary = try PatchPackageCodec.inspect(data)
+            if let publishedProtection = item.isPasswordProtected,
+               publishedProtection != summary.isPasswordProtected {
+                return .failure("O estado de proteção do pacote não corresponde ao catálogo.")
+            }
             if summary.isPasswordProtected,
                let password = item.password?.trimmingCharacters(in: .whitespacesAndNewlines),
                !password.isEmpty {

@@ -19,12 +19,20 @@ final class PatchCatalogStore: ObservableObject {
     private var refreshInFlight = false
     private var readyFilenames: Set<String> = []
     private var inFlightDownloads: [String: Task<PatchHubDownloadOutcome, Never>] = [:]
+    private var eventStreamTask: Task<Void, Never>?
 
     init() {
         cacheDir = (try? PatchProjectLibrary.packageRootURL())
             ?? FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
                 .appendingPathComponent(".fp-session", isDirectory: true)
                 .appendingPathComponent(".packages", isDirectory: true)
+        eventStreamTask = Task { [weak self] in
+            await self?.listenForCatalogChanges()
+        }
+    }
+
+    deinit {
+        eventStreamTask?.cancel()
     }
 
     // MARK: - Load catalog + prefetch all files in small batches
@@ -103,6 +111,43 @@ final class PatchCatalogStore: ObservableObject {
         if failedDownloads > 0 {
             let detail = firstDownloadFailure.map { " Primeiro erro: \($0)" } ?? ""
             downloadError = "Não foi possível carregar \(failedDownloads) opção(ões). Elas continuam visíveis; toque para tentar novamente.\(detail)"
+        }
+    }
+
+    private func listenForCatalogChanges() async {
+        let endpoint = FilzaLicense.patchHubBaseURL.appendingPathComponent("api/mobile/patches/events")
+        while !Task.isCancelled {
+            do {
+                var request = URLRequest(url: endpoint)
+                request.setValue("text/event-stream", forHTTPHeaderField: "Accept")
+                request.timeoutInterval = 0
+                let (bytes, response) = try await URLSession.shared.bytes(for: request)
+                guard let http = response as? HTTPURLResponse,
+                      (200..<300).contains(http.statusCode) else {
+                    throw URLError(.badServerResponse)
+                }
+                var eventName: String?
+                for try await line in bytes.lines {
+                    if Task.isCancelled { return }
+                    if line.hasPrefix("event:") {
+                        eventName = line.dropFirst(6).trimmingCharacters(in: .whitespaces)
+                    } else if line.isEmpty {
+                        if eventName == "ready" || eventName == "patch" || eventName == "catalog" {
+                            eventName = nil
+                            await refresh()
+                        } else {
+                            eventName = nil
+                        }
+                    }
+                }
+            } catch is CancellationError {
+                return
+            } catch {
+                // Polling/foreground refresh remains the fallback when SSE is unavailable.
+            }
+            if !Task.isCancelled {
+                try? await Task.sleep(nanoseconds: 2_000_000_000)
+            }
         }
     }
 
