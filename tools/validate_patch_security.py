@@ -61,7 +61,7 @@ def main() -> int:
             "package cache is persistent in hidden Application Support, not tmp/Documents")
 
     catalog = read("ThreeOneOSFive/helpers/PatchCatalogStore.swift")
-    catalog_exists = between(catalog, "    private nonisolated static func isValidCachedPackage(at url: URL) -> Bool {", "    private static func normalizedCategory(")
+    catalog_exists = between(catalog, "    private nonisolated static func isValidCachedPackage(", "    private static func normalizedCategory(")
     require('ensureProtectedAtRest(at: url)' in catalog_exists
             and 'readPackage(at: url)' in catalog_exists,
             "remote catalog only reports a cache ready after protected read succeeds")
@@ -106,8 +106,8 @@ def main() -> int:
             "PatchHub download reports format, HTTP, and protected-cache failures without weakening package validation")
     require('let password = item.password?' in license_download
             and 'PatchKeyStore.store(decoded.contentKey, for: summary)' in license_download
-            and 'package remains locked' in license_download,
-            "optional PatchHub package passwords unlock content keys with manual fallback")
+            and 'senha enviada pelo PatchHub não desbloqueou' in license_download,
+            "PatchHub package passwords unlock content keys and fail closed when invalid")
     codec = read("ThreeOneOSFive/helpers/PatchPackageCodec.swift")
     require('latestReadableSchemaVersion = 3' in codec
             and 'latestWritableSchemaVersion = 2' in codec
