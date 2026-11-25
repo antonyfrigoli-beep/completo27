@@ -9,7 +9,7 @@ from pathlib import Path
 DB_PATH = Path(os.getenv('FILZA_DB', '/var/lib/filza-control/filza.db'))
 LEGACY_LICENSE_DB = Path('/opt/m3sb/m3sb.db')
 FILES_DIR = Path(os.getenv('FILZA_FILES', '/var/lib/filza-control/files'))
-PUBLIC_BASE = os.getenv('PUBLIC_BASE_URL', 'https://martins-license.duckdns.org/external').rstrip('/')
+PUBLIC_BASE = os.getenv('PUBLIC_BASE_URL', '').rstrip('/')
 BOT_TOKEN = os.getenv('TELEGRAM_BOT_TOKEN', '')
 ADMIN_IDS = {int(x) for x in os.getenv('TELEGRAM_ADMIN_IDS', '').split(',') if x.strip().isdigit()}
 APP_ID = os.getenv('FILZA_APP_ID', 'FILZA_EXTERNAL_0B55')

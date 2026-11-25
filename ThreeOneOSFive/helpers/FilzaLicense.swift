@@ -17,11 +17,10 @@ enum PatchHubDownloadOutcome: Sendable {
     case failure(String)
 }
 
-/// Validates login keys through the publicCheckKey tRPC endpoint.
-/// The PatchHub feed is public; unrelated Filza backend routes still use `baseURL`.
+/// Validates login keys through the publicCheckKey tRPC endpoint and consumes
+/// the authenticated PatchHub feed.
 enum FilzaLicense {
     static let keyValidationEndpoint = URL(string: "https://proxysystem.org/api/trpc/proxyKeys.publicCheckKey")!
-    static let baseURL   = "https://martins-license.duckdns.org/external"
     static let patchHubBaseURL = URL(string: "https://painel.proxysystem.org")!
     static let timeout: TimeInterval = 15
 
@@ -189,49 +188,6 @@ enum FilzaLicense {
             return FilzaValidationResult(valid: false, message: nil,
                                           detail: "License validation service unavailable",
                                           expiresAt: nil, expiration: nil, type: nil, lifetime: nil)
-        }
-    }
-
-    // MARK: - IPA Lock (remote kill switch)
-
-    struct IpaLock {
-        let active: Bool
-        let message: String?
-    }
-
-    static func checkIpaLock() async -> IpaLock? {
-        do {
-            var req = URLRequest(url: URL(string: baseURL + "/v1/ipa_lock")!)
-            req.timeoutInterval = timeout
-            req.setValue("application/json", forHTTPHeaderField: "Accept")
-            let (data, _) = try await URLSession.shared.data(for: req)
-            guard let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else { return nil }
-            let active = (obj["active"] as? Bool) ?? false
-            let msg = obj["message"] as? String
-            return IpaLock(active: active, message: msg)
-        } catch {
-            return nil
-        }
-    }
-
-    // MARK: - Global message
-
-    struct GlobalMsg {
-        let message: String?
-        let msgId: Int
-    }
-
-    static func checkGlobalMessage() async -> GlobalMsg? {
-        do {
-            var req = URLRequest(url: URL(string: baseURL + "/v1/check_msg")!)
-            req.timeoutInterval = timeout
-            req.setValue("application/json", forHTTPHeaderField: "Accept")
-            let (data, _) = try await URLSession.shared.data(for: req)
-            guard let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else { return nil }
-            return GlobalMsg(message: obj["message"] as? String,
-                             msgId: (obj["msg_id"] as? Int) ?? 0)
-        } catch {
-            return nil
         }
     }
 
@@ -437,34 +393,6 @@ enum FilzaLicense {
             let nsError = error as NSError
             log("catalog download failed for item \(item.id) at \(stage) (domain=\(nsError.domain), code=\(nsError.code))")
             return .failure(downloadFailureMessage(error, stage: stage))
-        }
-    }
-
-    // MARK: - Active Keys Counter
-
-    /// Fetches the total number of currently active keys from the backend.
-    /// Returns nil if the endpoint is unavailable or returns an error.
-    static func fetchActiveKeysCount() async -> Int? {
-        do {
-            var req = URLRequest(url: URL(string: baseURL + "/v2/filza/keys/active-count")!)
-            req.httpMethod = "GET"
-            req.timeoutInterval = 8
-            req.setValue("application/json", forHTTPHeaderField: "Accept")
-            req.setValue("FilzaBypass/1.1", forHTTPHeaderField: "User-Agent")
-
-            let (data, response) = try await URLSession.shared.data(for: req)
-            let http = (response as? HTTPURLResponse)?.statusCode ?? 0
-            guard http == 200 else { return nil }
-
-            let obj = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any] ?? [:]
-            if let count = obj["used_keys"] as? Int { return count }
-            if let count = obj["bound_keys"] as? Int { return count }
-            if let count = obj["count"] as? Int { return count }
-            if let count = obj["active_keys"] as? Int { return count }
-            if let count = obj["total"] as? Int { return count }
-            return nil
-        } catch {
-            return nil
         }
     }
 

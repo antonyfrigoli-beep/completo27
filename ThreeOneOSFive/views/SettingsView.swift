@@ -50,7 +50,6 @@ struct SettingsView: View {
                             .padding(.vertical, 9)
                             .overlay(alignment: .bottom) { Rectangle().fill(Color.white.opacity(0.08)).frame(height: 0.5) }
 
-                            settingRow("Keys em uso", value: "\(licenseManager.activeKeysCount.map(String.init) ?? "—")")
                             licenseKeyRow
                         }
 
@@ -116,12 +115,6 @@ struct SettingsView: View {
         .tint(AppTheme.accent)
         .onReceive(timer) { now = $0 }
         .onAppear { integrityVerified = AntiCrack.verifyBundleIntegrity() }
-        .task {
-            while !Task.isCancelled {
-                await licenseManager.refreshActiveCount()
-                try? await Task.sleep(nanoseconds: 15_000_000_000)
-            }
-        }
     }
 
     private var licenseRemainingText: String {

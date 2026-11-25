@@ -87,7 +87,7 @@ def main() -> int:
             and "allow_legacy=True" in server,
             "catalog accepts only already-activated legacy reseller keys and does not consume unused keys")
     license_catalog = between(license, "    static func fetchCatalog()", "    /// Download and validate one package from the public PatchHub feed.")
-    license_download = between(license, "    static func downloadItem(", "    // MARK: - Active Keys Counter")
+    license_download = between(license, "    static func downloadItem(", "    // MARK: - Parsing")
     require('appendingPathComponent("mobile")' in license_catalog
             and 'appendingPathComponent("catalog")' in license_catalog
             and 'obj["patches"]' in license_catalog
@@ -217,13 +217,15 @@ def main() -> int:
     ]
     require(not any(text in activation for text in spanish_activation),
             "activation screen contains none of the previous Spanish labels")
-    lock_screen = read("ThreeOneOSFive/helpers/LockScreenView.swift")
-    require('manager.refreshRemoteState()' in lock_screen
-            and 'O serviço está temporariamente indisponível.' in lock_screen
-            and 'manager.lockMessage' not in lock_screen
-            and 'TENTAR NOVAMENTE' in lock_screen,
-            "remote lock remains enforced while its message is neutralized locally")
     app_entry = read("ThreeOneOSFive/App.swift")
+    license_manager = read("ThreeOneOSFive/helpers/LicenseManager.swift")
+    license_client = read("ThreeOneOSFive/helpers/FilzaLicense.swift")
+    require(not (ROOT / "ThreeOneOSFive/helpers/LockScreenView.swift").exists()
+            and "isLocked" not in app_entry
+            and "globalMessage" not in app_entry
+            and "refreshRemoteState" not in license_manager
+            and "fetchActiveKeysCount" not in license_client,
+            "legacy remote lock, global message and old backend methods are absent from the IPA")
     flow_markers = [
         "CalculadoraIPhoneView {",
         "LicenseActivationView(manager: licenseManager)",

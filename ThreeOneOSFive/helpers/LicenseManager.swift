@@ -10,10 +10,6 @@ final class LicenseManager: ObservableObject {
     @Published private(set) var isBusy = false
     @Published private(set) var message: String?
     @Published private(set) var contactOwner: String?
-    @Published private(set) var isLocked = false
-    @Published private(set) var lockMessage: String?
-    @Published private(set) var globalMessage: String?
-    @Published private(set) var activeKeysCount: Int?
     @Published var rememberKey = true
 
     private let service = "com.apple.mobile.MobileHouseArrest.activation"
@@ -46,9 +42,6 @@ final class LicenseManager: ObservableObject {
             clearPatchSession()
             message = "Key required — enter your access key"
         }
-        // Remote kill-switch + global announcement (non-blocking)
-        Task { await refreshRemoteState() }
-        Task { await refreshActiveCount() }
     }
 
     /// Revalidates a remembered license after a temporary background transition
@@ -57,8 +50,6 @@ final class LicenseManager: ObservableObject {
     func refreshInForeground() {
         guard hasRememberedValidKey, string(for: keyAccount) != nil else { return }
         Task { await revalidateStoredKey() }
-        Task { await refreshRemoteState() }
-        Task { await refreshActiveCount() }
     }
 
     func activate(key: String) {
@@ -146,10 +137,6 @@ final class LicenseManager: ObservableObject {
         message = isActive ? "Ready to use" : "Key required — enter your access key"
     }
 
-    func dismissGlobalMessage() {
-        globalMessage = nil
-    }
-
     func deactivate() {
         clearStoredLicense()
         clearPatchSession()
@@ -166,28 +153,6 @@ final class LicenseManager: ObservableObject {
 
     private func clearPatchSession() {
         PatchCatalogStore.shared.clearForInvalidLicense()
-    }
-
-    /// Fetches the remote IPA lock and global message.
-    func refreshRemoteState() async {
-        async let lock = FilzaLicense.checkIpaLock()
-        async let msg  = FilzaLicense.checkGlobalMessage()
-        let (l, m) = await (lock, msg)
-        await MainActor.run {
-            if let l {
-                self.isLocked = l.active
-                self.lockMessage = l.message
-            }
-            if let m, m.msgId > 0 {
-                self.globalMessage = m.message
-            }
-        }
-    }
-
-    /// Fetches the live count of active keys from the backend.
-    func refreshActiveCount() async {
-        guard let count = await FilzaLicense.fetchActiveKeysCount() else { return }
-        await MainActor.run { self.activeKeysCount = count }
     }
 
     // MARK: - Keychain helpers

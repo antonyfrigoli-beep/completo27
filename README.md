@@ -9,7 +9,6 @@ Esta versão parte diretamente do `Base.zip` fornecido.
 - Scheme: `FILZA EXTERNAL V1000`
 - Bundle ID preservado da base: `com.apple.mobile.MobileHouseArrest`
 - Validação da key de licença: `https://proxysystem.org/api/trpc/proxyKeys.publicCheckKey` (tRPC GET; `input` contém `key` e `deviceId`)
-- Backend Filza auxiliar: `https://martins-license.duckdns.org/external` (catálogo, bloqueio remoto, avisos e contador de keys)
 
 ## Alterações aplicadas
 

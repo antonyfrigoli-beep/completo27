@@ -71,7 +71,6 @@
 		3105K200 /* LicenseManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3105K100; };
 		3105K201 /* LicenseActivationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3105K101; };
 		3105L200 /* FilzaLicense.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3105L100; };
-		3105M200 /* LockScreenView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3105M100; };
 		3105A211 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 3105A031; };
 		3105P200 /* ActivationBackground.png in Resources */ = {isa = PBXBuildFile; fileRef = 3105P100; };
 		3105V200 /* REALExternalMark.png in Resources */ = {isa = PBXBuildFile; fileRef = 3105V100; };
@@ -175,7 +174,6 @@
 		3105K100 /* LicenseManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LicenseManager.swift; sourceTree = "<group>"; };
 		3105K101 /* LicenseActivationView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LicenseActivationView.swift; sourceTree = "<group>"; };
 		3105L100 /* FilzaLicense.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FilzaLicense.swift; sourceTree = "<group>"; };
-		3105M100 /* LockScreenView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LockScreenView.swift; sourceTree = "<group>"; };
 		3105S100 /* AnimatedHyperBackdrop.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnimatedHyperBackdrop.swift; sourceTree = "<group>"; };
 		3105T100 /* PatchUnlockPrompt.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PatchUnlockPrompt.swift; sourceTree = "<group>"; };
 		3105B114 /* PatchProjectModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PatchProjectModels.swift; sourceTree = "<group>"; };
@@ -390,7 +388,6 @@
 					3105K100 /* LicenseManager.swift */,
 					3105K101 /* LicenseActivationView.swift */,
 					3105L100 /* FilzaLicense.swift */,
-					3105M100 /* LockScreenView.swift */,
 				3105S100 /* AnimatedHyperBackdrop.swift */,
 				3105T100 /* PatchUnlockPrompt.swift */,
 					3105A106 /* AppIconHelper.m */,
@@ -680,7 +677,6 @@
 				3105K200 /* LicenseManager.swift in Sources */,
 				3105K201 /* LicenseActivationView.swift in Sources */,
 				3105L200 /* FilzaLicense.swift in Sources */,
-				3105M200 /* LockScreenView.swift in Sources */,
 				3105R200 /* PatchCatalog.swift in Sources */,
 				3105U200 /* PatchCatalogStore.swift in Sources */,
 				3105S200 /* AnimatedHyperBackdrop.swift in Sources */,

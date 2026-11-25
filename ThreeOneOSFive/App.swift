@@ -44,9 +44,6 @@ struct ThreeOneOSFiveApp: App {
             Group {
                 if securityBlocked {
                     SecurityBlockedView()
-                } else if licenseManager.isLocked {
-                    LockScreenView(manager: licenseManager)
-                        .environmentObject(licenseManager)
                 } else if !calculatorUnlocked {
                     CalculadoraIPhoneView {
                         withAnimation(.easeInOut(duration: 0.22)) {
@@ -85,16 +82,6 @@ struct ThreeOneOSFiveApp: App {
                     },
                     secondaryButton: .cancel(Text("Agora não"))
                 )
-            }
-            .alert("Aviso global", isPresented: Binding(
-                get: { licenseManager.globalMessage?.isEmpty == false },
-                set: { visible in
-                    if !visible { licenseManager.dismissGlobalMessage() }
-                }
-            )) {
-                Button("OK") { licenseManager.dismissGlobalMessage() }
-            } message: {
-                Text(licenseManager.globalMessage ?? "")
             }
             .onAppear {
                 guard !securityBlocked else { return }
