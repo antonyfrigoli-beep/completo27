@@ -14,8 +14,7 @@ enum AntiCrack {
     /// A faixa de tamanho é apenas referência: o tipo é validado pela assinatura
     /// para não bloquear mídia legítima reempacotada por um instalador do iOS.
     static let criticalFiles: [String] = [
-        "ActivationBackground.png|png|2000000|5000000|89504e470d0a1a0a",
-        "REALExternalMark.png|png|100000|5000000|89504e470d0a1a0a",
+        "ProxySystem.png|png|100000|5000000|89504e470d0a1a0a",
         "Tutorials/tutorial_error_banner.jpg|jpg|1000|2000000|ffd8ff",
         "Tutorials/tutorial_ffth_banner.jpg|jpg|1000|2000000|ffd8ff",
         "Tutorials/tutorial_ap_banner.jpg|jpg|1000|2000000|ffd8ff",

@@ -27,7 +27,7 @@ struct LicenseActivationView: View {
                                 .fill(accent.opacity(0.10))
                                 .frame(width: 90, height: 90)
                                 .overlay(Circle().stroke(accent.opacity(0.26), lineWidth: 1))
-                            BrandXLogo(size: 58)
+                            ProxySystemLogo(size: 58)
                                 .shadow(color: accent.opacity(0.18), radius: 16, y: 4)
                         }
 

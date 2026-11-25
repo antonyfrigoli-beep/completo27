@@ -158,7 +158,7 @@ def main() -> int:
             and 'TutorialsView()' in view
             and 'showSettings = true' in view,
             "expanding menu contains five categories, Tutorials and Settings")
-    require('Text("FILZA EXTERNAL BYPASS")' not in view
+    require('Text("EXTERNALSYSTEM")' not in view
             and 'TOMMY' not in view
             and 'Patchs' in view,
             "minimal patch dashboard has no brand header and retains the Patchs title")
@@ -182,7 +182,7 @@ def main() -> int:
             "tutorial page is empty until new remote videos are published")
     settings = read("ThreeOneOSFive/views/SettingsView.swift")
     require('AppLogo' not in settings
-            and 'FILZA EXTERNAL BYPASS' not in settings
+            and 'EXTERNALSYSTEM' not in settings
             and 'CENTRAL DE CONFIGURAÇÕES' not in settings
             and 'AppInfo.displayMachineName' in settings
             and 'licenseManager.expirationDate' in settings
@@ -288,7 +288,7 @@ def main() -> int:
             "resource validator includes MOV/MP4/M4V ftyp offset-4 test cases")
 
     icon_path = APP / "Assets.xcassets/AppIcon.appiconset/AppIcon-1024.png"
-    mark_path = APP / "REALExternalMark.png"
+    mark_path = APP / "ProxySystem.png"
     require(icon_path.is_file() and mark_path.is_file()
             and icon_path.read_bytes() != mark_path.read_bytes(),
             "Calculadora app icon is separate from the internal activation artwork")

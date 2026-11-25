@@ -11,7 +11,7 @@ struct GameSelectionView: View {
                 VStack(spacing: 0) {
                     Spacer(minLength: 40)
 
-                    BrandXLogo(size: 76)
+                    ProxySystemLogo(size: 76)
                         .padding(.bottom, 14)
 
                     Text("EXTERNAL SYSTEM")
@@ -93,11 +93,11 @@ struct GameSelectionView: View {
     }
 }
 
-struct BrandXLogo: View {
+struct ProxySystemLogo: View {
     var size: CGFloat = 54
 
     var body: some View {
-        Image("BrandX")
+        Image("ProxySystem")
             .resizable()
             .scaledToFit()
             .frame(width: size, height: size)

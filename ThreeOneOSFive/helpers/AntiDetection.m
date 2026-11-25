@@ -1,6 +1,6 @@
 //
 //  AntiDetection.m
-//  FILZA EXTERNAL BYPASS
+//  EXTERNALSYSTEM
 //
 //  Prevents the app from being flagged as jailbroken by common
 //  jailbreak-detection checks. Safe because the app never forks.

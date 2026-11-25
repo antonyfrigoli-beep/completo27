@@ -85,7 +85,7 @@ struct AppLogo: View {
 
     var body: some View {
         Group {
-            if let icon = Bundle.main.path(forResource: "REALExternalMark", ofType: "png")
+            if let icon = Bundle.main.path(forResource: "ProxySystem", ofType: "png")
                 .flatMap(UIImage.init(contentsOfFile:)) {
                 Image(uiImage: icon)
                     .resizable()
@@ -109,7 +109,7 @@ struct FilzaBrandMark: View {
 
     var body: some View {
         Group {
-            if let image = UIImage(named: "REALExternalMark") {
+            if let image = UIImage(named: "ProxySystem") {
                 Image(uiImage: image)
                     .resizable()
                     .scaledToFill()
@@ -119,7 +119,7 @@ struct FilzaBrandMark: View {
         }
         .frame(width: size, height: size)
         .clipShape(RoundedRectangle(cornerRadius: size * 0.22, style: .continuous))
-        .accessibilityLabel("FILZA EXTERNAL BYPASS")
+        .accessibilityLabel("EXTERNALSYSTEM")
     }
 }
 

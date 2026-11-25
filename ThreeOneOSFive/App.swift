@@ -18,7 +18,7 @@ struct ThreeOneOSFiveApp: App {
 
     init() {
         setupLogCapture()
-        log("app: FILZA EXTERNAL BYPASS launching — iOS \(AppInfo.osVersion) (\(AppInfo.osBuild)) \(AppInfo.machineName)")
+        log("app: EXTERNALSYSTEM launching — iOS \(AppInfo.osVersion) (\(AppInfo.osBuild)) \(AppInfo.machineName)")
         let blocked = !AntiCrack.verifyAtLaunch()
         _securityBlocked = State(initialValue: blocked)
         // GATE ANTI-CRACK: se o bundle foi modificado ou há debugger/injeção,

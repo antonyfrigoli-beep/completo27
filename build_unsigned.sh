@@ -23,9 +23,9 @@ xcodebuild \
   CODE_SIGN_IDENTITY='' \
   archive
 
-APP="$ARCHIVE/Products/Applications/FILZA EXTERNAL BYPASS.app"
+APP="$ARCHIVE/Products/Applications/EXTERNALSYSTEM.app"
 test -d "$APP"
-/usr/libexec/PlistBuddy -c 'Set :CFBundleExecutable FILZA EXTERNAL BYPASS' "$APP/Info.plist" || true
+/usr/libexec/PlistBuddy -c 'Set :CFBundleExecutable EXTERNALSYSTEM' "$APP/Info.plist" || true
 /usr/libexec/PlistBuddy -c "Set :CFBundlePackageType APPL" "$APP/Info.plist" || true
 mkdir -p "$BUILD_DIR/Payload"
 cp -R "$APP" "$BUILD_DIR/Payload/"

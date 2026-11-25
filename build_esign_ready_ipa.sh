@@ -32,8 +32,8 @@ if [[ -e "$APP/embedded.mobileprovision" || -e "$APP/_CodeSignature" ]]; then
   exit 1
 fi
 
-if [[ ! -x "$APP/FILZA EXTERNAL BYPASS" ]]; then
-  echo "Error: expected executable FILZA EXTERNAL BYPASS was not found in the app bundle." >&2
+if [[ ! -x "$APP/EXTERNALSYSTEM" ]]; then
+  echo "Error: expected executable EXTERNALSYSTEM was not found in the app bundle." >&2
   exit 1
 fi
 
