@@ -20,6 +20,7 @@ final class PatchCatalogStore: ObservableObject {
     private var readyFilenames: Set<String> = []
     private var inFlightDownloads: [String: Task<PatchHubDownloadOutcome, Never>] = [:]
     private var eventStreamTask: Task<Void, Never>?
+    private let remoteIndexKey = "PatchHub.remotePackageFilenames.v1"
 
     init() {
         cacheDir = (try? PatchProjectLibrary.packageRootURL())
@@ -59,6 +60,7 @@ final class PatchCatalogStore: ObservableObject {
         }
 
         let incoming = catalog.items
+        removePackagesNoLongerPublished(keeping: Set(incoming.map { filename(for: $0) }))
         publishCatalogIfChanged(incoming)
 
         guard !incoming.isEmpty else {
@@ -155,6 +157,23 @@ final class PatchCatalogStore: ObservableObject {
         let oldSignature = items.map { "\($0.id)|\($0.file)|\($0.cat ?? "")" }
         let newSignature = incoming.map { "\($0.id)|\($0.file)|\($0.cat ?? "")" }
         if oldSignature != newSignature { items = incoming }
+    }
+
+    private func removePackagesNoLongerPublished(keeping current: Set<String>) {
+        let previous = Set(UserDefaults.standard.stringArray(forKey: remoteIndexKey) ?? [])
+        let stale = previous.subtracting(current)
+        if !stale.isEmpty {
+            let libraries = PatchProjectLibrary.load()
+            for filename in stale {
+                if let library = libraries.first(where: { $0.packageURL.lastPathComponent == filename }),
+                   let receipt = DevicePatchService.latestReceipt(projectID: library.id) {
+                    try? DevicePatchService.restore(receipt: receipt)
+                }
+                try? FileManager.default.removeItem(at: cacheDir.appendingPathComponent(filename))
+            }
+            PatchProjectStore.shared.reload()
+        }
+        UserDefaults.standard.set(Array(current), forKey: remoteIndexKey)
     }
 
     private func filename(for item: FilzaLicense.CatalogItem) -> String {
