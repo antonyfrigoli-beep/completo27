@@ -403,15 +403,17 @@ enum FilzaLicense {
                publishedProtection != summary.isPasswordProtected {
                 return .failure("O estado de proteção do pacote não corresponde ao catálogo.")
             }
-            if summary.isPasswordProtected,
-               let password = item.password?.trimmingCharacters(in: .whitespacesAndNewlines),
-               !password.isEmpty {
+            if summary.isPasswordProtected {
+                guard let password = item.password?.trimmingCharacters(in: .whitespacesAndNewlines),
+                      !password.isEmpty else {
+                    return .failure("O PatchHub marcou este patch como protegido, mas não enviou uma senha válida.")
+                }
                 do {
                     let decoded = try PatchPackageCodec.decode(data, password: password)
                     try PatchKeyStore.store(decoded.contentKey, for: summary)
                 } catch {
-                    // Keep a protected package available for the existing manual unlock prompt.
-                    log("catalog password did not unlock item \(item.id); package remains locked")
+                    try? FileManager.default.removeItem(at: dest)
+                    return .failure("A senha enviada pelo PatchHub não desbloqueou este patch. Verifique a senha publicada no site.")
                 }
             }
             stage = "protected cache write"

@@ -191,7 +191,7 @@ final class PatchCatalogStore: ObservableObject {
         }
 
         let validCache = await Task.detached(priority: .utility) {
-            Self.isValidCachedPackage(at: destination)
+            Self.isValidCachedPackage(at: destination, catalogItem: item)
         }.value
         if validCache {
             readyFilenames.insert(filename)
@@ -214,14 +214,23 @@ final class PatchCatalogStore: ObservableObject {
         return result
     }
 
-    private nonisolated static func isValidCachedPackage(at url: URL) -> Bool {
+    private nonisolated static func isValidCachedPackage(
+        at url: URL,
+        catalogItem: FilzaLicense.CatalogItem
+    ) -> Bool {
         guard FileManager.default.fileExists(atPath: url.path) else { return false }
         do {
             // Migrate legacy plaintext cache entries, then verify encryption,
             // authentication, and package structure before treating them as ready.
             try PatchProjectLibrary.ensureProtectedAtRest(at: url)
             let data = try PatchProjectLibrary.readPackage(at: url)
-            _ = try PatchPackageCodec.inspect(data)
+            let summary = try PatchPackageCodec.inspect(data)
+            if summary.isPasswordProtected {
+                guard let password = catalogItem.password?.trimmingCharacters(in: .whitespacesAndNewlines),
+                      !password.isEmpty else { throw PatchPackageError.invalidPasswordOrCorruptedPackage }
+                let decoded = try PatchPackageCodec.decode(data, password: password)
+                try PatchKeyStore.store(decoded.contentKey, for: summary)
+            }
             return true
         } catch {
             try? FileManager.default.removeItem(at: url)
