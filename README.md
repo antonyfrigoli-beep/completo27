@@ -8,7 +8,8 @@ Esta versão parte diretamente do `Base.zip` fornecido.
 - Projeto: `TOMMY-EXTERNAL-20k7-master/ThreeOneOSFive.xcodeproj`
 - Scheme: `FILZA EXTERNAL V1000`
 - Bundle ID preservado da base: `com.apple.mobile.MobileHouseArrest`
-- Validação da key de licença: `https://proxysystem.org/api/trpc/proxyKeys.publicCheckKey` (tRPC GET; `input` contém `key` e `deviceId`)
+- Validação de keys GH777: `POST https://gh777-license-api.marcelamartinszx12.workers.dev/api/keys/validate` (JSON com `key` e `deviceId`; primeira ativação vincula a key ao aparelho)
+- Catálogo de patches permanece no PatchHub: `https://painel.proxysystem.org`
 
 ## Alterações aplicadas
 

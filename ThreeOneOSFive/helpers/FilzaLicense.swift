@@ -17,10 +17,10 @@ enum PatchHubDownloadOutcome: Sendable {
     case failure(String)
 }
 
-/// Validates login keys through the publicCheckKey tRPC endpoint and consumes
+/// Validates GH777 license keys through the Cloudflare Worker and consumes
 /// the authenticated PatchHub feed.
 enum FilzaLicense {
-    static let keyValidationEndpoint = URL(string: "https://proxysystem.org/api/trpc/proxyKeys.publicCheckKey")!
+    static let keyValidationEndpoint = URL(string: "https://gh777-license-api.marcelamartinszx12.workers.dev/api/keys/validate")!
     static let patchHubBaseURL = URL(string: "https://painel.proxysystem.org")!
     static let timeout: TimeInterval = 15
 
@@ -134,9 +134,8 @@ enum FilzaLicense {
 
     // MARK: - Public API
 
-    /// Validate a key with the same tRPC GET contract used by the source app.
-    /// `input` contains JSON shaped as {"json":{"key":"...","deviceId":"..."}}.
-    /// The query-string form is required by this endpoint's publicCheckKey API.
+    /// Validate a GH777 key. The Worker accepts a JSON POST body containing
+    /// the key and this installation's stable device identifier.
     static func validate(key: String) async -> FilzaValidationResult {
         let trimmed = key.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else {
@@ -152,27 +151,18 @@ enum FilzaLicense {
         let hwid = deviceHWID()
 
         do {
-            let input: [String: Any] = ["json": ["key": trimmed, "deviceId": hwid]]
+            let input: [String: Any] = ["key": trimmed, "deviceId": hwid]
             let inputData = try JSONSerialization.data(withJSONObject: input)
-            guard let inputJSON = String(data: inputData, encoding: .utf8) else {
-                return FilzaValidationResult(valid: false, message: nil, detail: "Invalid validation request",
-                                              expiresAt: nil, expiration: nil, type: nil, lifetime: nil)
-            }
-            var components = URLComponents(url: keyValidationEndpoint, resolvingAgainstBaseURL: false)!
-            components.queryItems = [URLQueryItem(name: "input", value: inputJSON)]
-            guard let requestURL = components.url else {
-                return FilzaValidationResult(valid: false, message: nil, detail: "Invalid validation URL",
-                                              expiresAt: nil, expiration: nil, type: nil, lifetime: nil)
-            }
-
-            var req = URLRequest(url: requestURL)
-            req.httpMethod = "GET"
+            var req = URLRequest(url: keyValidationEndpoint)
+            req.httpMethod = "POST"
             req.timeoutInterval = timeout
+            req.setValue("application/json", forHTTPHeaderField: "Content-Type")
             req.setValue("application/json", forHTTPHeaderField: "Accept")
+            req.httpBody = inputData
 
             let (data, response) = try await URLSession.shared.data(for: req)
             let http = (response as? HTTPURLResponse)?.statusCode ?? 0
-            let parsed = parsePublicCheckKeyResponse(data)
+            let parsed = parseGH777ValidationResponse(data)
             guard (200..<300).contains(http) else {
                 return FilzaValidationResult(valid: false,
                                               message: parsed.message,
@@ -403,7 +393,7 @@ enum FilzaLicense {
         return nil
     }
 
-    private static func parsePublicCheckKeyResponse(_ data: Data) -> FilzaValidationResult {
+    private static func parseGH777ValidationResponse(_ data: Data) -> FilzaValidationResult {
         guard let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
             return FilzaValidationResult(valid: false, message: nil, detail: "Bad JSON",
                                          expiresAt: nil, expiration: nil, type: nil, lifetime: nil)
