@@ -9,7 +9,7 @@ Esta versão parte diretamente do `Base.zip` fornecido.
 - Scheme: `FILZA EXTERNAL V1000`
 - Bundle ID preservado da base: `com.apple.mobile.MobileHouseArrest`
 - Validação de keys GH777: `POST https://gh777-license-api.marcelamartinszx12.workers.dev/api/keys/validate` (JSON com `key` e `deviceId`; primeira ativação vincula a key ao aparelho)
-- Catálogo de patches permanece no PatchHub: `https://painel.proxysystem.org`
+- URL-base do feed de patches configurada no app: `https://gh777-patch-feed.marcelamartinszx12.workers.dev` (o app ainda solicita `/api/mobile/catalog`, que precisa ser compatibilizada com as rotas do Worker)
 
 ## Alterações aplicadas
 
