@@ -1,4 +1,6 @@
 import SwiftUI
+import UIKit
+import CryptoKit
 
 enum AppTheme {
     // Superfícies neutras em grafite; os acentos de estado continuam reservados a feedback funcional.
@@ -529,9 +531,8 @@ struct PremiumPatchCard: View {
                         if isBusy {
                             ProgressView().tint(stateTint)
                         } else if let previewURL, let url = URL(string: previewURL) {
-                            AsyncImage(url: url) { phase in
-                                if let image = phase.image { image.resizable().scaledToFill() }
-                                else { fallbackIcon }
+                            CachedPatchIcon(url: url) {
+                                fallbackIcon
                             }
                             .frame(width: iconSize, height: iconSize)
                             .clipShape(CutCornerPlate(cut: 10))
@@ -643,6 +644,71 @@ struct PremiumPatchCard: View {
         }
         .foregroundStyle(stateTint)
         .frame(width: iconSize, height: iconSize)
+    }
+}
+
+private struct CachedPatchIcon<Placeholder: View>: View {
+    let url: URL
+    let placeholder: () -> Placeholder
+    @StateObject private var loader = PatchIconLoader()
+
+    var body: some View {
+        Group {
+            if let image = loader.image {
+                Image(uiImage: image).resizable().scaledToFill()
+            } else {
+                placeholder()
+            }
+        }
+        .task(id: url) {
+            await loader.load(url: url)
+        }
+    }
+}
+
+@MainActor
+private final class PatchIconLoader: ObservableObject {
+    @Published var image: UIImage?
+    private static let memory = NSCache<NSURL, UIImage>()
+    private var loadedURL: URL?
+
+    func load(url: URL) async {
+        guard loadedURL != url else { return }
+        loadedURL = url
+        if let cached = Self.memory.object(forKey: url as NSURL) {
+            image = cached
+            return
+        }
+
+        let diskURL = Self.diskURL(for: url)
+        if let data = try? Data(contentsOf: diskURL), let cached = UIImage(data: data) {
+            Self.memory.setObject(cached, forKey: url as NSURL)
+            image = cached
+            return
+        }
+
+        do {
+            var request = URLRequest(url: url)
+            request.cachePolicy = .reloadIgnoringLocalCacheData
+            let (data, response) = try await URLSession.shared.data(for: request)
+            guard let http = response as? HTTPURLResponse,
+                  (200..<300).contains(http.statusCode),
+                  let downloaded = UIImage(data: data) else { return }
+            try? FileManager.default.createDirectory(at: diskURL.deletingLastPathComponent(), withIntermediateDirectories: true)
+            try? data.write(to: diskURL, options: .atomic)
+            Self.memory.setObject(downloaded, forKey: url as NSURL)
+            image = downloaded
+        } catch {
+            // Keep the placeholder; a later refresh can retry the icon.
+        }
+    }
+
+    private static func diskURL(for url: URL) -> URL {
+        let digest = SHA256.hash(data: Data(url.absoluteString.utf8))
+            .map { String(format: "%02x", $0) }.joined()
+        return FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask)[0]
+            .appendingPathComponent("PatchHubIcons", isDirectory: true)
+            .appendingPathComponent(digest)
     }
 }
 

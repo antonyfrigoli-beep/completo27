@@ -193,7 +193,7 @@ enum FilzaLicense {
 
     // MARK: - Catalog (online file updates)
 
-    struct CatalogItem: Identifiable, Sendable {
+    struct CatalogItem: Identifiable, Sendable, Codable {
         let id: String
         let name: String
         let img: String?
@@ -226,7 +226,7 @@ enum FilzaLicense {
         }
     }
 
-    struct Catalog: Sendable {
+    struct Catalog: Sendable, Codable {
         let items: [CatalogItem]
     }
 

@@ -21,12 +21,17 @@ final class PatchCatalogStore: ObservableObject {
     private var inFlightDownloads: [String: Task<PatchHubDownloadOutcome, Never>] = [:]
     private var eventStreamTask: Task<Void, Never>?
     private let remoteIndexKey = "PatchHub.remotePackageFilenames.v1"
+    private let catalogCacheKey = "PatchHub.catalog.cache.v1"
 
     init() {
         cacheDir = (try? PatchProjectLibrary.packageRootURL())
             ?? FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
                 .appendingPathComponent(".fp-session", isDirectory: true)
                 .appendingPathComponent(".packages", isDirectory: true)
+        if let data = UserDefaults.standard.data(forKey: catalogCacheKey),
+           let cached = try? JSONDecoder().decode(FilzaLicense.Catalog.self, from: data) {
+            items = cached.items
+        }
         eventStreamTask = Task { [weak self] in
             await self?.listenForCatalogChanges()
         }
@@ -62,6 +67,9 @@ final class PatchCatalogStore: ObservableObject {
         let incoming = catalog.items
         removePackagesNoLongerPublished(keeping: Set(incoming.map { filename(for: $0) }))
         publishCatalogIfChanged(incoming)
+        if let data = try? JSONEncoder().encode(catalog) {
+            UserDefaults.standard.set(data, forKey: catalogCacheKey)
+        }
 
         guard !incoming.isEmpty else {
             PatchProjectStore.shared.reload()
