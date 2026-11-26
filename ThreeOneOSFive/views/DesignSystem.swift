@@ -111,7 +111,7 @@ struct FilzaBrandMark: View {
 
     var body: some View {
         Group {
-            if let image = UIImage(named: "ProxySystem") {
+            if let image = UIImage(named: "GH777") {
                 Image(uiImage: image)
                     .resizable()
                     .scaledToFill()
@@ -121,7 +121,7 @@ struct FilzaBrandMark: View {
         }
         .frame(width: size, height: size)
         .clipShape(RoundedRectangle(cornerRadius: size * 0.22, style: .continuous))
-        .accessibilityLabel("EXTERNALSYSTEM")
+        .accessibilityLabel("GH777")
     }
 }
 

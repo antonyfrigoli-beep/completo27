@@ -27,7 +27,11 @@ struct LicenseActivationView: View {
                                 .fill(accent.opacity(0.10))
                                 .frame(width: 90, height: 90)
                                 .overlay(Circle().stroke(accent.opacity(0.26), lineWidth: 1))
-                            ProxySystemLogo(size: 58)
+                            Image("GH777")
+                                .resizable()
+                                .scaledToFit()
+                                .frame(width: 70, height: 58)
+                                .accessibilityLabel("GH777")
                                 .shadow(color: accent.opacity(0.18), radius: 16, y: 4)
                         }
 
