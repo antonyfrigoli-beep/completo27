@@ -14,7 +14,7 @@ struct GameSelectionView: View {
                     ProxySystemLogo(size: 76)
                         .padding(.bottom, 14)
 
-                    Text("EXTERNAL SYSTEM")
+                    Text("EXTERNAL GH777")
                         .font(.system(size: 27, weight: .black, design: .rounded))
                         .tracking(1.4)
                         .foregroundStyle(.white)
