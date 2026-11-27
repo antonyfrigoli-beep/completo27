@@ -21,7 +21,7 @@ enum PatchHubDownloadOutcome: Sendable {
 /// the authenticated PatchHub feed.
 enum FilzaLicense {
     static let keyValidationEndpoint = URL(string: "https://gh777-license-api.marcelamartinszx12.workers.dev/api/keys/validate")!
-    static let patchHubBaseURL = URL(string: "https://gh777-patch-feed.marcelamartinszx12.workers.dev")!
+    static let patchHubBaseURL = URL(string: "https://gh777-ipa-catalog.marcelamartinszx12.workers.dev")!
     static let timeout: TimeInterval = 15
 
     private static func log(_ message: String) {
