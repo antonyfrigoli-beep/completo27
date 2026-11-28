@@ -7,8 +7,18 @@ struct PatchTransactionReceipt {
     let backend: Backend
     enum Backend { case airTraffic, airLift, local }
 }
-struct PatchProject { var id = UUID(); var allBundleIdentifiers: [String] = [] }
-enum PatchPackageError: Error { case restoreFailed; case targetAppUnavailable(String) }
+struct PatchRule { var bundleID: String; var relativePath: String }
+struct PatchDirectory { var bundleID: String; var relativePath: String }
+struct PatchProject {
+    var id = UUID()
+    var allBundleIdentifiers: [String] = []
+    var rules: [PatchRule] = []
+    var directories: [PatchDirectory] = []
+}
+enum PatchProjectCompatibility {
+    static func conflictingTargetPath(_ first: PatchProject, _ second: PatchProject) -> String? { nil }
+}
+enum PatchPackageError: Error { case restoreFailed; case duplicateTarget; case targetAppUnavailable(String) }
 enum AirLiftTransportError: Error { case tunnelUnavailable }
 enum AppInfo { static let versionTuple = (major: 27, minor: 0, patch: 0); static let osBuild = "test" }
 enum ExploitSupportPolicy { static let gameBundleIDs = ["com.dts.freefireth", "com.dts.freefiremax"]; static func requiresAirLift(major: Int, minor: Int, patch: Int, build: String) -> Bool { true } }
