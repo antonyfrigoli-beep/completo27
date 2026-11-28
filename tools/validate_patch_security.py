@@ -116,7 +116,8 @@ def main() -> int:
             and '(minimumSchemaVersion...latestWritableSchemaVersion)' in codec
             and '(minimumSchemaVersion...latestReadableSchemaVersion).contains(schemaVersion)' in codec,
             "schema 3 packages are read with authenticated payloads, preserved on edit, and fresh packages/password AAD stay conservative")
-    require('Nenhum patch .3105 está publicado no PatchHub' in catalog
+    require(('Nenhum patch compatível está publicado no PatchHub' in catalog
+            or 'Nenhum patch .3105 está publicado no PatchHub' in catalog)
             and 'ERRO NO DOWNLOAD — \\(reason)' in catalog
             and 'Task<PatchHubDownloadOutcome, Never>' in catalog,
             "empty PatchHub feeds and per-item failures have an explicit user-facing diagnosis")
@@ -170,7 +171,8 @@ def main() -> int:
             and 'downloadOnly(remote)' not in view
             and 'onlineCatalog.toggle(remote)' in view
             and 'UserDefaults.standard.set(false, forKey: "filzaBypass.automaticPatchMode")' in view
-            and 'Ativação manual: toque em um patch para ativar ou desativar.' in view
+            and ('Toque em cada patch para ativar ou desativar.' in view
+                 or 'Ativação manual: toque em um patch para ativar ou desativar.' in view)
             and 'startGameLaunchTimer' not in view
             and 'recoverExpiredTemporaryPatchIfNeeded' not in view,
             "all patch activation and restoration is manual; old automatic mode/timers are disabled")
