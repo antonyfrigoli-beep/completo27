@@ -151,7 +151,7 @@ enum PatchProjectLibrary {
     }
 
     /// Once, removes artifacts created by releases that embedded patches locally.
-    /// Downloaded `.3105`, `.3106`, and `.r7v` packages stay protected in hidden Application Support;
+    /// Downloaded `.r7v` packages stay encrypted in hidden Application Support;
     /// stale plaintext workspace directories from older releases are removed.
     static func purgeLegacyBundledArtifacts(fileManager: FileManager = .default) {
         // Remove old persistent patch locations from earlier releases.
@@ -170,7 +170,7 @@ enum PatchProjectLibrary {
             try? fileManager.removeItem(at: patchRoot.appendingPathComponent(name))
         }
         if let urls = try? fileManager.contentsOfDirectory(at: patchRoot, includingPropertiesForKeys: nil) {
-            for url in urls where ["3105", "3106", "r7v"].contains(url.pathExtension.lowercased()) {
+            for url in urls where ["3105", "r7v"].contains(url.pathExtension.lowercased()) {
                 try? fileManager.removeItem(at: url)
             }
         }
@@ -192,7 +192,7 @@ enum PatchProjectLibrary {
               ) else { return [] }
 
         var byFilename: [String: PatchLibraryItem] = [:]
-        for rawURL in urls where ["3105", "3106", "r7v"].contains(rawURL.pathExtension.lowercased()) {
+        for rawURL in urls where ["3105", "r7v"].contains(rawURL.pathExtension.lowercased()) {
             let url = migrateOpaqueCatalogURLIfNeeded(from: rawURL, fileManager: fileManager)
             do {
                 try ensureProtectedAtRest(at: url, fileManager: fileManager)

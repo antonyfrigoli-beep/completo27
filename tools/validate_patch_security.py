@@ -116,8 +116,7 @@ def main() -> int:
             and '(minimumSchemaVersion...latestWritableSchemaVersion)' in codec
             and '(minimumSchemaVersion...latestReadableSchemaVersion).contains(schemaVersion)' in codec,
             "schema 3 packages are read with authenticated payloads, preserved on edit, and fresh packages/password AAD stay conservative")
-    require(('Nenhum patch compatível está publicado no PatchHub' in catalog
-            or 'Nenhum patch .3105 está publicado no PatchHub' in catalog)
+    require('Nenhum patch .3105 está publicado no PatchHub' in catalog
             and 'ERRO NO DOWNLOAD — \\(reason)' in catalog
             and 'Task<PatchHubDownloadOutcome, Never>' in catalog,
             "empty PatchHub feeds and per-item failures have an explicit user-facing diagnosis")

@@ -3,7 +3,7 @@ import SwiftUI
 
 /// Downloads and applies patch packages from the online catalog.
 ///
-/// The IPA ships with NO embedded patches. Every `.3105` or `.3106` package is fetched
+/// The IPA ships with NO embedded patches. Every `.3105` package is fetched
 /// from PatchHub (`/api/mobile/catalog`) and kept in the protected session directory.
 /// Toggling a card on/off applies or restores the corresponding project.
 @MainActor
@@ -73,7 +73,7 @@ final class PatchCatalogStore: ObservableObject {
 
         guard !incoming.isEmpty else {
             PatchProjectStore.shared.reload()
-            downloadError = "Nenhum patch compatível está publicado no PatchHub no momento. Publique/ative um pacote no site e atualize."
+            downloadError = "Nenhum patch .3105 está publicado no PatchHub no momento. Publique/ative um pacote no site e atualize."
             return
         }
 
