@@ -14,7 +14,7 @@ Esta versão parte diretamente do `Base.zip` fornecido.
 ## Alterações aplicadas
 
 - Validação de integridade compatível com recursos de mídia reempacotados pelo iOS.
-- Switch horizontal arrastável, seleção persistente e exclusividade apenas na mesma categoria.
+- Switch horizontal arrastável, seleção persistente e ativação simultânea de patches compatíveis; sobreposição de arquivos-alvo é bloqueada para evitar restaurações conflitantes.
 - `Patchs`/`Patch` agrupados em `Outros` e ciclo automático de seleção, abertura do jogo e aplicação/restauração temporizada.
 - Pacotes baixados com nomes opacos SHA-256 `.r7v`; o cache local é cifrado com AES-GCM e protegido por classe de arquivo do iOS em Application Support oculto.
 - A descriptografia de pacotes ocorre em memória para inspeção/aplicação; o app não cria nem sincroniza `.workspaces` plaintext e remove diretórios legados no início.

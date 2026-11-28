@@ -3,7 +3,7 @@ import SwiftUI
 
 /// Downloads and applies patch packages from the online catalog.
 ///
-/// The IPA ships with NO embedded patches. Every `.3105` package is fetched
+/// The IPA ships with NO embedded patches. Every `.3105` or `.3106` package is fetched
 /// from PatchHub (`/api/mobile/catalog`) and kept in the protected session directory.
 /// Toggling a card on/off applies or restores the corresponding project.
 @MainActor
@@ -73,7 +73,7 @@ final class PatchCatalogStore: ObservableObject {
 
         guard !incoming.isEmpty else {
             PatchProjectStore.shared.reload()
-            downloadError = "Nenhum patch .3105 está publicado no PatchHub no momento. Publique/ative um pacote no site e atualize."
+            downloadError = "Nenhum patch compatível está publicado no PatchHub no momento. Publique/ative um pacote no site e atualize."
             return
         }
 
@@ -342,18 +342,11 @@ final class PatchCatalogStore: ObservableObject {
         activeID = item.id
         let filename = item.localFilename
         let itemID = item.id
-        let categoryKey = Self.normalizedCategory(item.cat)
-        let sameCategoryPeers = categoryKey.map { selectedCategory in
-            items.filter { candidate in
-                candidate.id != item.id && Self.normalizedCategory(candidate.cat) == selectedCategory
-            }
-        } ?? []
 
         Task { [weak self] in
             guard let self else { return }
             var message: String
             var resultOn = wasOn
-            var restoredPeerIDs = Set<String>()
             var packageReady = wasOn
             var downloadFailure: String?
             if !wasOn {
@@ -367,7 +360,7 @@ final class PatchCatalogStore: ObservableObject {
             }
 
             if !packageReady {
-                message = "ERRO NO DOWNLOAD — \(downloadFailure ?? "Não foi possível validar o pacote .3105.")"
+                message = "ERRO NO DOWNLOAD — \(downloadFailure ?? "Não foi possível validar o pacote.")"
             } else {
                 if !wasOn {
                     let isLocked = await Task.detached(priority: .utility) {
@@ -380,51 +373,42 @@ final class PatchCatalogStore: ObservableObject {
                         return
                     }
                 }
-                let result = await Task.detached(priority: .userInitiated) { () -> (String, Bool, Set<String>) in
-                    var restored = Set<String>()
+                let result = await Task.detached(priority: .userInitiated) { () -> (String, Bool) in
                     do {
                         if wasOn {
                             if let lib = PatchProjectLibrary.load().first(where: { $0.packageURL.lastPathComponent == filename }),
                                let receipt = DevicePatchService.latestReceipt(projectID: lib.uniqueID) {
                                 try DevicePatchService.restore(receipt: receipt, allowModifiedPatchedFiles: true)
-                                return ("CONCLUÍDO", false, restored)
+                                return ("CONCLUÍDO", false)
                             }
-                            return ("DESATIVADO — NENHUM PATCH ATIVO", false, restored)
+                            return ("DESATIVADO — NENHUM PATCH ATIVO", false)
                         }
 
                         let libraries = PatchProjectLibrary.load()
-                        let peerProjectIDs = Set(sameCategoryPeers.compactMap { peer in
-                            libraries.first(where: { $0.packageURL.lastPathComponent == peer.localFilename })?.uniqueID
-                        })
-                        if !peerProjectIDs.isEmpty {
-                            let recovery = DevicePatchService.restorePendingOriginals(
-                                reconnect: true,
-                                projectIDs: peerProjectIDs
-                            )
-                            guard recovery.failures.isEmpty, recovery.remainingIDs.isEmpty else {
-                                throw PatchPackageError.restoreFailed
-                            }
-                            restored.formUnion(sameCategoryPeers.map(\.id))
-                        }
-
                         guard let library = PatchProjectLibrary.load()
                             .first(where: { $0.packageURL.lastPathComponent == filename }),
                               var project = library.project else {
-                            return ("ERRO — O PATCH AINDA NÃO ESTÁ PRONTO. TENTE NOVAMENTE.", false, restored)
+                            return ("ERRO — O PATCH AINDA NÃO ESTÁ PRONTO. TENTE NOVAMENTE.", false)
                         }
                         project.id = library.uniqueID
-                        _ = try DevicePatchService.apply(project: project)
-                        return ("CONCLUÍDO", true, restored)
+                        let knownProjects = libraries.compactMap { activeLibrary -> PatchProject? in
+                            guard var activeProject = activeLibrary.project else { return nil }
+                            activeProject.id = activeLibrary.uniqueID
+                            return activeProject
+                        }
+                        _ = try DevicePatchService.apply(
+                            project: project,
+                            checkingConflictsAgainst: knownProjects
+                        )
+                        return ("CONCLUÍDO", true)
                     } catch {
-                        return ("ERRO — \(error.localizedDescription)", wasOn, restored)
+                        return ("ERRO — \(error.localizedDescription)", wasOn)
                     }
                 }.value
                 message = result.0
                 resultOn = result.1
-                restoredPeerIDs = result.2
             }
 
-            for peerID in restoredPeerIDs { self.enabledIDs.remove(peerID) }
             if resultOn { self.enabledIDs.insert(itemID) }
             else { self.enabledIDs.remove(itemID) }
             self.activeID = nil

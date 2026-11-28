@@ -56,6 +56,38 @@ enum DevicePatchService {
         }
     }
 
+    /// Validate all currently active journals and apply under one shared lock,
+    /// so concurrent local/remote toggles cannot pass the conflict check together.
+    static func apply(
+        project: PatchProject,
+        checkingConflictsAgainst knownProjects: [PatchProject]
+    ) throws -> PatchTransactionReceipt {
+        transactionLock.lock()
+        defer { transactionLock.unlock() }
+
+        let pendingIDs = Set(pendingReceipts().map(\.projectID))
+        guard !pendingIDs.contains(project.id) else {
+            throw PatchPackageError.duplicateTarget
+        }
+
+        var projectsByID: [UUID: PatchProject] = [:]
+        for knownProject in knownProjects {
+            projectsByID[knownProject.id] = knownProject
+        }
+        guard pendingIDs.isSubset(of: Set(projectsByID.keys)) else {
+            throw PatchPackageError.restoreFailed
+        }
+        for pendingID in pendingIDs {
+            guard let activeProject = projectsByID[pendingID] else {
+                throw PatchPackageError.restoreFailed
+            }
+            if PatchProjectCompatibility.conflictingTargetPath(project, activeProject) != nil {
+                throw PatchPackageError.duplicateTarget
+            }
+        }
+        return try apply(project: project)
+    }
+
     static func restore(
         receipt: PatchTransactionReceipt,
         allowModifiedPatchedFiles: Bool = false

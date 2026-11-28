@@ -402,7 +402,7 @@ struct ContentView: View {
                     .foregroundStyle(AppTheme.secondaryAccent)
             }
 
-            Text("Ativação manual: toque em um patch para ativar ou desativar.")
+            Text("Toque em cada patch para ativar ou desativar. Vários podem ficar ativos se não alterarem os mesmos arquivos.")
                 .font(.system(size: 11, weight: .medium))
                 .foregroundStyle(.white.opacity(0.63))
                 .fixedSize(horizontal: false, vertical: true)
@@ -458,6 +458,7 @@ struct ContentView: View {
                             onlineCatalog.toggle(remote) { message in
                                 patchMessage = message
                                 patchStore.reload()
+                                restorePersistedPatchIDs()
                             }
                         }
                     }
@@ -825,6 +826,31 @@ struct ContentView: View {
         }
     }
 
+    private func multiplePatchWarning(for item: PatchLibraryItem) -> String? {
+        guard let candidateProject = item.project else {
+            return "Este pacote ainda não está pronto para ativação."
+        }
+        let activeItems = patchStore.items.filter {
+            $0.uniqueID != item.uniqueID && appliedPatchIDs.contains($0.uniqueID)
+        }
+        let knownActiveIDs = Set(activeItems.map(\.uniqueID))
+        let unresolvedIDs = appliedPatchIDs
+            .subtracting(knownActiveIDs)
+            .subtracting([item.uniqueID])
+        if !unresolvedIDs.isEmpty {
+            return "Há um patch ativo sem pacote disponível para verificar conflitos. Restaure os patches ativos antes de continuar."
+        }
+        for activeItem in activeItems {
+            guard let activeProject = activeItem.project else {
+                return "O patch ativo \(activeItem.displayName) não está disponível para verificação. Restaure os patches ativos antes de continuar."
+            }
+            if let target = PatchProjectCompatibility.conflictingTargetPath(candidateProject, activeProject) {
+                return "Conflito: \(activeItem.displayName) também altera \(target). Desative esse patch antes de ativar este."
+            }
+        }
+        return nil
+    }
+
     private func toggleLocalPatch(_ item: PatchLibraryItem) {
         guard !patchOperationBusy, onlineCatalog.activeID == nil, !selectionTapLocked,
               isPatchApplied(item) || isReadyToSelect(item) else {
@@ -838,62 +864,38 @@ struct ContentView: View {
         let wasApplied = isPatchApplied(item)
         let selectedCategory = category(for: item) ?? selectedGameTab.category
 
-        if !wasApplied && !appliedPatchIDs.isEmpty {
-            patchMessage = "RESETE DO ZERO ANTES DE USAR OUTRO PATCH"
-            showManualRestorePrompt = false
+        if !wasApplied, let warning = multiplePatchWarning(for: item) {
+            patchMessage = warning
+            activationFailureDetails = warning
+            showActivationFailureAlert = true
             return
         }
 
         if !wasApplied {
-            // A troca exige o reset explícito para evitar journals antigos e
-            // garantir que o próximo patch comece em estado limpo.
-            let previousSameCategoryItems = patchStore.items.filter { candidate in
-                candidate.uniqueID != item.uniqueID &&
-                category(for: candidate) == selectedCategory &&
-                isPatchApplied(candidate)
-            }
-
             patchOperationBusy = true
             activePatchID = item.uniqueID
             patchMessage = "PROCESSANDO..."
+            let knownProjects = patchStore.items.compactMap { libraryItem -> PatchProject? in
+                guard var project = libraryItem.project else { return nil }
+                project.id = libraryItem.uniqueID
+                return project
+            }
 
             DevicePatchService.operationQueue.async {
-                var inactiveIDs = Set<UUID>()
-                var restoreFailure: String?
-                if !isPersistentCategory(selectedCategory) {
-                    let previousIDs = Set(previousSameCategoryItems.map(\.uniqueID))
-                    // Do not make an empty recovery reconnect gate the first
-                    // manual apply. Reconnect only when there is an older
-                    // patch that actually needs restoration.
-                    if !previousIDs.isEmpty {
-                        let recovery = DevicePatchService.restorePendingOriginals(
-                            reconnect: true,
-                            projectIDs: previousIDs
-                        )
-                        if recovery.failures.isEmpty {
-                            inactiveIDs.formUnion(previousIDs.subtracting(recovery.remainingIDs))
-                        } else {
-                            restoreFailure = recovery.failures.joined(separator: "\n\n")
-                        }
-                    }
-                }
-
                 var message: String
-                if let restoreFailure {
-                    message = "ERROR — " + restoreFailure
-                } else {
-                    do {
-                        var project = item.project!
-                        project.id = item.uniqueID
-                        _ = try DevicePatchService.apply(project: project)
-                        message = "ATIVO — " + item.displayName
-                    } catch {
-                        message = "ERROR — " + error.localizedDescription
-                    }
+                do {
+                    var project = item.project!
+                    project.id = item.uniqueID
+                    _ = try DevicePatchService.apply(
+                        project: project,
+                        checkingConflictsAgainst: knownProjects
+                    )
+                    message = "ATIVO — " + item.displayName
+                } catch {
+                    message = "ERROR — " + error.localizedDescription
                 }
 
                 DispatchQueue.main.async { [self] in
-                    appliedPatchIDs.subtract(inactiveIDs)
                     if message.hasPrefix("ATIVO") {
                         appliedPatchIDs.insert(item.uniqueID)
                         if !isPersistentCategory(selectedCategory) {
@@ -902,6 +904,7 @@ struct ContentView: View {
                         PatchAudioFeedback.bypassActivated()
                     }
                     persistAppliedPatchIDs()
+                    onlineCatalog.syncEnabledStates()
                     patchMessage = message.hasPrefix("ATIVO") ? "PATCH ATIVO" : "NÃO FOI POSSÍVEL ATIVAR"
                     if !message.hasPrefix("ATIVO") {
                         activationFailureDetails = message.replacingOccurrences(of: "ERROR — ", with: "")

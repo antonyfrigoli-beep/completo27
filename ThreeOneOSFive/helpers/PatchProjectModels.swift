@@ -116,6 +116,49 @@ struct PatchProject: Codable, Identifiable, Hashable {
     }
 }
 
+enum PatchProjectCompatibility {
+    /// Returns a target path when two projects would write to the same file or
+    /// when one file target would need to be another target's parent directory.
+    static func conflictingTargetPath(_ first: PatchProject, _ second: PatchProject) -> String? {
+        for firstRule in first.rules {
+            let firstPath = normalized(firstRule.relativePath)
+            for secondRule in second.rules where firstRule.bundleID == secondRule.bundleID {
+                let secondPath = normalized(secondRule.relativePath)
+                if pathsOverlap(firstPath, secondPath) {
+                    return "\(firstRule.bundleID)/\(firstRule.relativePath)"
+                }
+            }
+            for secondDirectory in second.directories where firstRule.bundleID == secondDirectory.bundleID {
+                if fileConflictsWithDirectory(firstPath, normalized(secondDirectory.relativePath)) {
+                    return "\(firstRule.bundleID)/\(firstRule.relativePath)"
+                }
+            }
+        }
+
+        for secondRule in second.rules {
+            let secondPath = normalized(secondRule.relativePath)
+            for firstDirectory in first.directories where secondRule.bundleID == firstDirectory.bundleID {
+                if fileConflictsWithDirectory(secondPath, normalized(firstDirectory.relativePath)) {
+                    return "\(secondRule.bundleID)/\(secondRule.relativePath)"
+                }
+            }
+        }
+        return nil
+    }
+
+    private static func normalized(_ path: String) -> String {
+        path.precomposedStringWithCanonicalMapping.lowercased()
+    }
+
+    private static func pathsOverlap(_ first: String, _ second: String) -> Bool {
+        first == second || first.hasPrefix(second + "/") || second.hasPrefix(first + "/")
+    }
+
+    private static func fileConflictsWithDirectory(_ file: String, _ directory: String) -> Bool {
+        file == directory || directory.hasPrefix(file + "/")
+    }
+}
+
 struct PatchPackageSummary: Equatable, Identifiable {
     var id: UUID { packageID }
     let packageID: UUID
